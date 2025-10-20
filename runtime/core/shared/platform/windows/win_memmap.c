@@ -29,7 +29,7 @@ access_to_win32_flags(int prot)
 }
 
 void *
-os_mmap(void *hint, size_t size, int prot, int flags)
+os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
 {
     DWORD alloc_type = MEM_RESERVE;
     DWORD protect;
@@ -39,9 +39,21 @@ os_mmap(void *hint, size_t size, int prot, int flags)
     page_size = os_getpagesize();
     request_size = (size + page_size - 1) & ~(page_size - 1);
 
-    if (request_size < size)
-        /* integer overflow */
+    if (request_size < size) {
+        printf("mmap failed: request size overflow due to paging\n");
         return NULL;
+    }
+
+#if WASM_ENABLE_JIT != 0
+    /**
+     * Allocate memory at the highest possible address if the
+     * request size is large, or LLVM JIT might report error:
+     * IMAGE_REL_AMD64_ADDR32NB relocation requires an ordered
+     * section layout.
+     */
+    if (request_size > 10 * BH_MB)
+        alloc_type |= MEM_TOP_DOWN;
+#endif
 
     protect = access_to_win32_flags(prot);
     if (protect != PAGE_NOACCESS) {
@@ -79,8 +91,7 @@ os_munmap(void *addr, size_t size)
         }
     }
 #if TRACE_MEMMAP != 0
-    printf("Unmap memory, addr: %p, request_size: %zu\n",
-           addr, request_size);
+    printf("Unmap memory, addr: %p, request_size: %zu\n", addr, request_size);
 #endif
 }
 
@@ -95,8 +106,8 @@ os_mem_commit(void *addr, size_t size, int flags)
         return NULL;
 
 #if TRACE_MEMMAP != 0
-    printf("Commit memory, addr: %p, request_size: %zu, protect: 0x%x\n",
-           addr, request_size, protect);
+    printf("Commit memory, addr: %p, request_size: %zu, protect: 0x%x\n", addr,
+           request_size, protect);
 #endif
     return VirtualAlloc((LPVOID)addr, request_size, MEM_COMMIT, protect);
 }
@@ -111,8 +122,8 @@ os_mem_decommit(void *addr, size_t size)
         return;
 
 #if TRACE_MEMMAP != 0
-    printf("Decommit memory, addr: %p, request_size: %zu\n",
-           addr, request_size);
+    printf("Decommit memory, addr: %p, request_size: %zu\n", addr,
+           request_size);
 #endif
     VirtualFree((LPVOID)addr, request_size, MEM_DECOMMIT);
 }
@@ -134,4 +145,3 @@ os_mprotect(void *addr, size_t size, int prot)
 #endif
     return VirtualProtect((LPVOID)addr, request_size, protect, NULL);
 }
-

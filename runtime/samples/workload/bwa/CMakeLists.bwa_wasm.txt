@@ -1,9 +1,14 @@
 # Copyright (C) 2019 Intel Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.14)
 
 project(bwa_wasm C)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake)
+
+################ dependencies ################
+find_package(Binaryen 111 REQUIRED)
 
 ################ LIBZ ################
 set(LIBZ_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../libz)
@@ -84,18 +89,11 @@ add_executable(${PROJECT_NAME} ${BWA_SOURCE})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME bwa.wasm)
 
-target_include_directories(${PROJECT_NAME}
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/SSE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/pthread
-)
-
 target_compile_definitions(${PROJECT_NAME}
   PRIVATE
     USE_MALLOC_WRAPPERS
     __SSE__ __SSE2__ __SSE4_1__
-    _WASI_EMULATED_MMAN _WASI_EMULATED_SIGNAL
+    _WASI_EMULATED_MMAN _WASI_EMULATED_SIGNAL _WASI_EMULATED_PROCESS_CLOCKS
 )
 
 target_compile_options(${PROJECT_NAME}
@@ -112,20 +110,11 @@ target_link_options(${PROJECT_NAME}
     LINKER:-z,stack-size=1048576
 )
 
-target_link_libraries(${PROJECT_NAME} z_wasm)
-
-find_program(WASM_OPT
-    NAMES wasm-opt
-    PATHS /opt/binaryen-version_97/bin /opt/binaryen/bin
-)
-
-if (NOT WASM_OPT)
-  message(WARNING "can not find wasm-opt and will not optimize any wasm module")
-endif()
+target_link_libraries(${PROJECT_NAME} z_wasm wasi-emulated-process-clocks)
 
 add_custom_target(bwa_wasm_opt ALL
   COMMAND
-    ${WASM_OPT} -Oz --enable-simd -o bwa.opt.wasm bwa.wasm
+    ${Binaryen_WASM_OPT} -Oz --enable-simd -o bwa.opt.wasm bwa.wasm
   BYPRODUCTS
     ${CMAKE_CURRENT_BINARY_DIR}/bwa.opt.wasm
   WORKING_DIRECTORY

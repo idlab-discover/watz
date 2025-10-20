@@ -31,13 +31,13 @@ static void utils_print_byte_array(uint8_t *byte_array, int byte_array_len)
 }
 #endif
 
-WASI_RA_Result wasi_ra_collect_quote(wasm_exec_env_t exec_env, uint8_t *anchor, int anchor_size, uint32_t quote_handle_out) {
+WASI_RA_Result wasi_ra_collect_quote(wasm_exec_env_t exec_env, uint8_t *anchor, int anchor_size, size_t quote_handle_out) {
     DMSG("has been called");
 
     TEE_Result res;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    if (!wasm_runtime_validate_app_addr(module_inst, quote_handle_out, sizeof(uint32_t))) return WASI_RA_SANDBOX_VIOLATION;
+    if (!wasm_runtime_validate_app_addr(module_inst, quote_handle_out, sizeof(size_t))) return WASI_RA_SANDBOX_VIOLATION;
     int *quote_handle = wasm_runtime_addr_app_to_native(module_inst, quote_handle_out);
 
     if (!is_ra_quote_available) return WASI_RA_CONCURRENT_ERROR;
@@ -51,7 +51,7 @@ WASI_RA_Result wasi_ra_collect_quote(wasm_exec_env_t exec_env, uint8_t *anchor, 
     }
 
 #ifdef DEBUG_MESSAGE
-    DMSG("wasi_ra_collect_quote called! anchor address: %p; size: %d; value: %s. Dumping quote:", anchor, anchor_size, anchor);
+    DMSG("wasi_ra_collect_quote called! anchor address: %p; size: %zu; value: %s. Dumping quote:", anchor, anchor_size, anchor);
     utils_print_byte_array((uint8_t*) &ra_quote_singleton, sizeof(ra_quote) / 2);
     utils_print_byte_array(((uint8_t*) &ra_quote_singleton) + sizeof(ra_quote) / 2, sizeof(ra_quote) / 2);
 #endif
@@ -61,7 +61,7 @@ WASI_RA_Result wasi_ra_collect_quote(wasm_exec_env_t exec_env, uint8_t *anchor, 
     return WASI_RA_SUCCESS;
 }
 
-WASI_RA_Result wasi_ra_net_dispose_quote(wasm_exec_env_t exec_env, uint32_t quote_handle) {
+WASI_RA_Result wasi_ra_net_dispose_quote(wasm_exec_env_t exec_env, size_t quote_handle) {
     DMSG("has been called");
 
     (void)exec_env;
@@ -73,7 +73,7 @@ WASI_RA_Result wasi_ra_net_dispose_quote(wasm_exec_env_t exec_env, uint32_t quot
     if (quote_handle == WASI_RA_DEFAULT_QUOTE_HANDLE) {
         quote = &ra_quote_singleton;
     } else {
-        EMSG("The ra_quote handle '%u' is invalid.", quote_handle);
+        EMSG("The ra_quote handle '%zu' is invalid.", quote_handle);
         return WASI_RA_INVALID_QUOTE_HANDLE;
     }
 
@@ -89,14 +89,14 @@ WASI_RA_Result wasi_ra_net_dispose_quote(wasm_exec_env_t exec_env, uint32_t quot
 }
 
 WASI_RA_Result wasi_ra_net_handshake(wasm_exec_env_t exec_env, const char* host, uint8_t *ecdsa_service_public_key_x,
-        uint32_t ecdsa_service_public_key_x_size, uint8_t *ecdsa_service_public_key_y, uint32_t ecdsa_service_public_key_y_size,
-        uint8_t* anchor_buffer_out, uint32_t anchor_buffer_size, uint32_t ra_context_handle_out) {
+        size_t ecdsa_service_public_key_x_size, uint8_t *ecdsa_service_public_key_y, size_t ecdsa_service_public_key_y_size,
+        uint8_t* anchor_buffer_out, size_t anchor_buffer_size, size_t ra_context_handle_out) {
     DMSG("has been called");
 
     TEE_Result res;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    if (!wasm_runtime_validate_app_addr(module_inst, ra_context_handle_out, sizeof(uint32_t))) return WASI_RA_SANDBOX_VIOLATION;
+    if (!wasm_runtime_validate_app_addr(module_inst, ra_context_handle_out, sizeof(size_t))) return WASI_RA_SANDBOX_VIOLATION;
     int *ta_context_handle = wasm_runtime_addr_app_to_native(module_inst, ra_context_handle_out);
 
     if (!is_ra_context_available) return WASI_RA_CONCURRENT_ERROR;
@@ -114,7 +114,7 @@ WASI_RA_Result wasi_ra_net_handshake(wasm_exec_env_t exec_env, const char* host,
     return WASI_RA_SUCCESS;
 }
 
-WASI_RA_Result wasi_ra_net_send_quote(wasm_exec_env_t exec_env, uint32_t ra_context_handle, uint32_t quote_handle) {
+WASI_RA_Result wasi_ra_net_send_quote(wasm_exec_env_t exec_env, size_t ra_context_handle, size_t quote_handle) {
     DMSG("has been called");
 
     (void)exec_env;
@@ -127,14 +127,14 @@ WASI_RA_Result wasi_ra_net_send_quote(wasm_exec_env_t exec_env, uint32_t ra_cont
     if (ra_context_handle == WASI_RA_DEFAULT_RA_CONTEXT_HANDLE) {
         context = &ra_context_singleton;
     } else {
-        EMSG("The ra_context handle '%u' is invalid.", ra_context_handle);
+        EMSG("The ra_context handle '%zu' is invalid.", ra_context_handle);
         return WASI_RA_INVALID_RA_CONTEXT_HANDLE;
     }
 
     if (quote_handle == WASI_RA_DEFAULT_QUOTE_HANDLE) {
         quote = &ra_quote_singleton;
     } else {
-        EMSG("The ra_quote handle '%u' is invalid.", quote_handle);
+        EMSG("The ra_quote handle '%zu' is invalid.", quote_handle);
         return WASI_RA_INVALID_QUOTE_HANDLE;
     }
 
@@ -148,14 +148,14 @@ WASI_RA_Result wasi_ra_net_send_quote(wasm_exec_env_t exec_env, uint32_t ra_cont
 
 }
 
-WASI_RA_Result wasi_ra_net_receive_data(wasm_exec_env_t exec_env, uint32_t ra_context_handle, uint32_t data_out, uint32_t data_size_inout) {
+WASI_RA_Result wasi_ra_net_receive_data(wasm_exec_env_t exec_env, size_t ra_context_handle, size_t data_out, size_t data_size_inout) {
     DMSG("has been called");
 
     TEE_Result res;
     ra_context *context;
     wasm_module_inst_t module_inst = get_module_inst(exec_env);
 
-    if (!wasm_runtime_validate_app_addr(module_inst, data_size_inout, sizeof(uint32_t))) return WASI_RA_SANDBOX_VIOLATION;
+    if (!wasm_runtime_validate_app_addr(module_inst, data_size_inout, sizeof(size_t))) return WASI_RA_SANDBOX_VIOLATION;
     uint32_t *data_size = wasm_runtime_addr_app_to_native(module_inst, data_size_inout);
 
     if (!wasm_runtime_validate_app_addr(module_inst, data_out, *data_size)) return WASI_RA_SANDBOX_VIOLATION;
@@ -166,7 +166,7 @@ WASI_RA_Result wasi_ra_net_receive_data(wasm_exec_env_t exec_env, uint32_t ra_co
     if (ra_context_handle == WASI_RA_DEFAULT_RA_CONTEXT_HANDLE) {
         context = &ra_context_singleton;
     } else {
-        EMSG("The ra_context handle '%u' is invalid.", ra_context_handle);
+        EMSG("The ra_context handle '%zu' is invalid.", ra_context_handle);
         return WASI_RA_INVALID_RA_CONTEXT_HANDLE;
     }
 
@@ -179,7 +179,7 @@ WASI_RA_Result wasi_ra_net_receive_data(wasm_exec_env_t exec_env, uint32_t ra_co
     return WASI_RA_SUCCESS;
 }
 
-WASI_RA_Result wasi_ra_net_dispose(wasm_exec_env_t exec_env, uint32_t ra_context_handle) {
+WASI_RA_Result wasi_ra_net_dispose(wasm_exec_env_t exec_env, size_t ra_context_handle) {
     DMSG("has been called");
 
     (void)exec_env;
@@ -191,13 +191,13 @@ WASI_RA_Result wasi_ra_net_dispose(wasm_exec_env_t exec_env, uint32_t ra_context
     if (ra_context_handle == WASI_RA_DEFAULT_RA_CONTEXT_HANDLE) {
         context = &ra_context_singleton;
     } else {
-        EMSG("The ra_context handle '%u' is invalid.", ra_context_handle);
+        EMSG("The ra_context handle '%zu' is invalid.", ra_context_handle);
         return WASI_RA_INVALID_RA_CONTEXT_HANDLE;
     }
 
     res = ra_net_dispose(context);
     if (res != TEE_SUCCESS) {
-        EMSG("The remote attestation context with handle '%u' cannot be disposed. Error: %x", ra_context_handle, res);
+        EMSG("The remote attestation context with handle '%zu' cannot be disposed. Error: %x", ra_context_handle, res);
         return WASI_RA_GENERIC_ERROR;
     }
 

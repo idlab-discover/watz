@@ -82,10 +82,33 @@ char *strcpy(char *dest, const char *src)
     return dest;
 }
 
-void* os_mmap(void *hint, size_t size, int prot, int flags)
+//NOTE(Friedrich) Dit is een zelfgeschreven functie, maar zwaar geinspireerd van SGX
+#if WASM_ENABLE_LIBC_WASI == 0
+bool
+os_is_handle_valid(os_file_handle *handle)
 {
-    uint64 aligned_size, page_size;
+    assert(handle != NULL);
+
+    return *handle > -1;
+}
+#else
+/* implemented in posix_file.c */
+#endif
+
+void* os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
+{
+    // Was uint64_t
+    size_t aligned_size, page_size;
     void* ret = NULL;
+
+    //NOTE(Friedrich) Dit is een zelfgeschreven functie, maar zwaar geinspireerd van SGX
+    if (os_is_handle_valid(&file)) {
+        os_printf("os_mmap(size=%u, prot=0x%x, file=%x) failed: file is not "
+                  "supported.\n",
+                  size, prot, file);
+        return NULL;
+    }
+
 
     page_size = PAGE_SIZE;
     aligned_size = (size + page_size - 1) & ~(page_size - 1);
@@ -104,6 +127,9 @@ void* os_mmap(void *hint, size_t size, int prot, int flags)
                   ret, size, aligned_size, prot);
     }
 
+#ifdef FRIEDRICH_DEBUG
+    os_printf("TZ_PLATFORM os_mmap CALLED");
+#endif
     if (os_mprotect(ret, aligned_size, prot) != 0) {
         os_printf("os_mmap(size=%lu, prot=0x%x) failed to set protect.",
                   size, prot);
@@ -120,7 +146,8 @@ void* os_mmap(void *hint, size_t size, int prot, int flags)
 
 void os_munmap(void *addr, size_t size)
 {
-    uint64 aligned_size, page_size;
+    //NOTE(Friedrich) Ik heb dit eens naar size_t veranderd
+    uint64_t aligned_size, page_size;
     TEE_Result res;
 
     page_size = PAGE_SIZE;
@@ -150,7 +177,7 @@ int os_mprotect(void *addr, size_t size, int prot)
 
     res = tee_mprotect(addr, size, mprot);
     if(res != TEE_SUCCESS) {
-        os_printf("os_mprotect(addr=%p, size=%lu, prot=%u) failed: %u.",
+        os_printf("os_mprotect(addr=%p, size=%zu, prot=%u) failed: %u.",
                 addr, size, prot, res);
     } else {
         DMSG("os_mprotect(addr=%p, size=%lu, prot=%u) OK.",
@@ -188,8 +215,22 @@ unsigned long long int strtoull(const char* str, char** endptr, int base)
     return 0;
 }
 
-float sqrtf(float arg)
+// #ifndef FRIEDRICH_APP_FRAMEWORK
+// float sqrtf(float arg)
+// {
+//     EMSG("sqrtf is not supported.");
+//     return 0;
+// }
+// #endif
+
+//NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms een -1
+int
+os_dumps_proc_mem_info(char *out, unsigned int size)
 {
-    EMSG("sqrtf is not supported.");
-    return 0;
+    return -1;
 }
+
+//NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms zo
+void
+os_icache_flush(void *start, size_t len)
+{}

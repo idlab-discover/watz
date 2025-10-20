@@ -5,7 +5,8 @@ BOARD ?= native
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../../../../RIOT
 
-USEMODULE += xtimer
+USEMODULE += ztimer64_msec
+USEMODULE += ztimer_usec
 USEMODULE += sema
 
 WPEDANTIC := 0
@@ -21,7 +22,7 @@ QUIET ?= 1
 
 ARCHIVES += $(BINDIR)/libwamr.a
 
-#Load the usual RIOT make infastructure
+#Load the usual RIOT make infrastructure
 
 include $(RIOTBASE)/Makefile.include
 

@@ -23,6 +23,7 @@ _invokeNative:
 
         push    {r4, r5, r6, r7}
         push    {lr}
+        sub     sp, sp, #4      /* make sp 8 byte aligned */
         mov     ip, r0          /* ip = function ptr */
         mov     r4, r1          /* r4 = argv */
         mov     r5, r2          /* r5 = nstacks */
@@ -54,7 +55,7 @@ _invokeNative:
         vldr    s13, [r4, #52]
         vldr    s14, [r4, #56]
         vldr    s15, [r4, #60]
-        /* Directly call the fucntion if no args in stack */
+        /* Directly call the function if no args in stack */
         cmp     r5, #0
         beq     call_func
 
@@ -91,6 +92,7 @@ call_func:
         mov     sp, r7          /* restore sp */
 
 return:
+        add     sp, sp, #4      /* make sp 8 byte aligned */
         pop     {r3}
         pop     {r4, r5, r6, r7}
         mov     lr, r3

@@ -9,6 +9,8 @@ HOST_CROSS_COMPILE ?= $(CROSS_COMPILE)
 LIB_CROSS_COMPILE ?= $(CROSS_COMPILE)
 TA_CROSS_COMPILE ?= $(CROSS_COMPILE)
 
+WAMR_ROOT := $(CURDIR)/../../../..
+
 #EXAMPLE_LIST := $(subst /,,$(dir $(wildcard */Makefile)))
 # TODO: include src directories?
 

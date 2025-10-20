@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
@@ -51,6 +52,7 @@ double fmax(double x, double y);
 double rint(double x);
 double fabs(double x);
 double trunc(double x);
+float sqrtf(float x);
 float floorf(float x);
 float ceilf(float x);
 float fminf(float x, float y);
@@ -60,6 +62,10 @@ float truncf(float x);
 int signbit(double x);
 int isnan(double x);
 
+unsigned long long int strtoull(const char *nptr, char **endptr, int base);
+double strtod(const char *nptr, char **endptr);
+float strtof(const char *nptr, char **endptr);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,6 +74,25 @@ typedef void* korp_thread;
 typedef void* korp_tid;
 typedef void* korp_mutex;
 typedef void* korp_cond;
+typedef void* korp_rwlock;
+typedef unsigned int korp_sem;
+
+typedef int os_file_handle;
+typedef DIR *os_dir_stream;
+typedef int os_raw_file_handle;
+
+//NOTE(Friedrich) Dit is een zelfgeschreven functie
+static inline int
+os_getpagesize()
+{
+    return PAGE_SIZE;
+}
+
+static inline os_file_handle
+os_get_invalid_handle(void)
+{
+    return -1;
+}
 
 /* Function prototypes */
 

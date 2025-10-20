@@ -27,30 +27,30 @@
 typedef struct
 {
     uint8_t ecdh_attester_public_key_x_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_attester_public_key_x_size;
+    size_t ecdh_attester_public_key_x_size;
     uint8_t ecdh_attester_public_key_y_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_attester_public_key_y_size;
+    size_t ecdh_attester_public_key_y_size;
 } msg0_t;
 
 typedef struct
 {
     uint8_t ecdh_verifier_public_key_x_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_verifier_public_key_x_size;
+    size_t ecdh_verifier_public_key_x_size;
     uint8_t ecdh_verifier_public_key_y_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_verifier_public_key_y_size;
+    size_t ecdh_verifier_public_key_y_size;
     uint8_t ecdsa_verifier_public_key_x_raw[RA_ECDSA_KEY_SIZE / 8];
-    uint32_t ecdsa_verifier_public_key_x_size;
+    size_t ecdsa_verifier_public_key_x_size;
     uint8_t ecdsa_verifier_public_key_y_raw[RA_ECDSA_KEY_SIZE / 8];
-    uint32_t ecdsa_verifier_public_key_y_size;
+    size_t ecdsa_verifier_public_key_y_size;
     uint8_t ecdh_signature[RA_SIGNATURE_SIZE];
     uint8_t mac[RA_AES_CMAC_TAG_SIZE / 8];
 } msg1_t;
 
 typedef struct {
     uint8_t ecdh_local_public_key_x_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_local_public_key_x_size;
+    size_t ecdh_local_public_key_x_size;
     uint8_t ecdh_local_public_key_y_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_local_public_key_y_size;
+    size_t ecdh_local_public_key_y_size;
     ra_quote quote;
     uint8_t mac[RA_AES_CMAC_TAG_SIZE / 8];
 } msg2_t;
@@ -58,7 +58,7 @@ typedef struct {
 typedef struct {
     uint8_t iv[RA_AES_GCM_IV_SIZE];
     uint8_t tag[RA_AES_GCM_TAG_SIZE / 8];
-    uint32_t encrypted_content_size;
+    size_t encrypted_content_size;
     uint8_t encrypted_content[];
 } msg3_t;
 
@@ -66,7 +66,7 @@ typedef struct
 {
     // Secret
     uint8_t *secret;
-    uint32_t secret_size;
+    size_t secret_size;
 
     // Keys material
     TEE_Attribute ecdsa_attester_public_key_x_attr;
@@ -91,16 +91,16 @@ typedef struct
     msg1_t msg1;
     msg2_t msg2;
     msg3_t *msg3;
-    uint32_t msg3_size;
+    size_t msg3_size;
 } ra_context_verifier;
 
 TEE_Result import_attester_attestation_key(ra_context_verifier *ctx);
 TEE_Result generate_ecdsa_keypair(ra_context_verifier *ctx);
-TEE_Result handle_msg0(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size);
-TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size, uint32_t *msg1_size);
-TEE_Result handle_msg2(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size);
-TEE_Result prepare_msg3(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size, uint8_t *data, uint32_t data_size,
-        void *benchmark_buffer, uint32_t benchmark_buffer_size);
+TEE_Result handle_msg0(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size);
+TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size, size_t *msg1_size);
+TEE_Result handle_msg2(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size);
+TEE_Result prepare_msg3(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size, uint8_t *data, size_t data_size,
+        void *benchmark_buffer, size_t benchmark_buffer_size);
 TEE_Result dispose_ra_context(ra_context_verifier *ctx);
 
 #endif /*VERIFIER_H*/

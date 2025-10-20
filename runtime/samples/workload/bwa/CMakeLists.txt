@@ -1,127 +1,72 @@
 # Copyright (C) 2019 Intel Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.14)
 
 project(bwa_wasm)
 
-################  WASI-SDK ################
-find_path(WASI_SDK_HOME
-  NAMES wasi-sdk
-  PATHS /opt/
-  REQUIRED
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
+
+################ dependencies ################
+find_package(Python3 REQUIRED)
+find_package(WASISDK 16.0 REQUIRED)
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/../../../test-tools/pick-up-emscripten-headers/collect_files.py --install ../include --loglevel=ERROR
+  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 )
-
-if (NOT WASI_SDK_HOME)
-  message(FATAL_ERROR
-    "can not find wasi-sdk. "
-    "please download it from "
-    "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-12/wasi-sdk-12.0-linux.tar.gz "
-    "and install it under /opt/wasi-sdk"
-  )
-endif()
-
-#
-# check clang version
-execute_process(COMMAND
-  ${WASI_SDK_HOME}/wasi-sdk/bin/clang --version
-  OUTPUT_VARIABLE clang_full_version_string
-)
-string(REGEX REPLACE ".*clang version ([0-9]+\\.[0-9]+).*" "\\1"
-  CLANG_VERSION_STRING ${clang_full_version_string}
-)
-message("cur clang version is ${CLANG_VERSION_STRING}")
-if(CLANG_VERSION_STRING VERSION_LESS 11.0)
-  message(FATAL_ERROR
-    "please install latest wai-sdk to get a clang-11 at least"
-  )
-endif()
-
-################  EMCC ################
-if(NOT DEFINED ENV{EMSDK})
-  message(FATAL_ERROR
-    "can not find emsdk. "
-    "please refer to https://emscripten.org/docs/getting_started/downloads.html "
-    "and install it, "
-    "or active emsdk by 'source ./emsdk_env.sh'"
-  )
-endif()
-
-################  BINARYEN ################
-find_program(WASM_OPT
-    NAMES wasm-opt
-    PATHS /opt/binaryen-version_97/bin /opt/binaryen/bin
-)
-
-if (NOT WASM_OPT)
-  message(FATAL_ERROR
-    "can not find wasm-opt. "
-    "please download it from "
-    "https://github.com/WebAssembly/binaryen/releases/download/version_97/binaryen-version_97-x86_64-linux.tar.gz "
-    "and install it under /opt"
-  )
-endif()
 
 #######################################
 include(ExternalProject)
 
-################ HEADERS ################
-ExternalProject_Add(headers_from_emcc
-   PREFIX headers
-   SOURCE_DIR "$ENV{EM_CACHE}/sysroot/include"
-   CONFIGURE_COMMAND ""
-   BUILD_COMMAND  ""
-   INSTALL_COMMAND mkdir -p ${CMAKE_CURRENT_SOURCE_DIR}/include/SSE
-                     && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/sys
-                     && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/include/emscripten
-                     # copy emscripten SSE header files
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/compat/immintrin.h ${CMAKE_CURRENT_SOURCE_DIR}/include/SSE/
-                     # SSE
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/compat/xmmintrin.h ${CMAKE_CURRENT_SOURCE_DIR}/include/SSE/
-                     # SSE2
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/compat/emmintrin.h ${CMAKE_CURRENT_SOURCE_DIR}/include/SSE/
-                     # SSE4.1
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/compat/smmintrin.h ${CMAKE_CURRENT_SOURCE_DIR}/include/SSE/
-                     # a fake empty header to aovid further depenency
-                     && ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_SOURCE_DIR}/include/emscripten/emscripten.h
-                     # copy emscripten pthread related header files
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/pthread.h ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/signal.h ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/netdb.h ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/sys/wait.h ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/sys/
-                     && ${CMAKE_COMMAND} -E copy $ENV{EM_CACHE}/sysroot/include/sys/socket.h ${CMAKE_CURRENT_SOURCE_DIR}/include/pthread/sys/
-)
-
 ################ libz ################
 ExternalProject_Add(libz_src
-  PREFIX libz
   GIT_REPOSITORY https://github.com/madler/zlib.git
-  GIT_TAG        master
+  GIT_TAG        04f42ceca40f73e2978b50e93806c2a18c1281fc
   GIT_PROGRESS   ON
   GIT_SHALLOW    ON
   SOURCE_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/libz
+  UPDATE_COMMAND    ""
+  PATCH_COMMAND     ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND  ""
-  INSTALL_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ""
 )
 
 ################ bwa ################
 ExternalProject_Add(bwa
-  PREFIX bwa
   GIT_REPOSITORY https://github.com/lh3/bwa.git
-  GIT_TAG        master
+  GIT_TAG        v0.7.18
   GIT_PROGRESS   ON
-  GIT_SHALLOW    ON
   SOURCE_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/bwa
-  DEPENDS        libz_src headers_from_emcc
-  UPDATE_COMMAND git clean -fd && git checkout -- *
+  DEPENDS        libz_src
+  UPDATE_COMMAND git clean -ffdx && git checkout -- *
                   && ${CMAKE_COMMAND} -E echo "Copying pre-installed CMakeLists.txt"
                   && ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.bwa_wasm.txt CMakeLists.txt
                   && git apply ../bwa.patch
   CONFIGURE_COMMAND  ${CMAKE_COMMAND}
-                         -DWASI_SDK_PREFIX=${WASI_SDK_HOME}/wasi-sdk
-                         -DCMAKE_TOOLCHAIN_FILE=${WASI_SDK_HOME}/wasi-sdk/share/cmake/wasi-sdk.cmake
-                         ${CMAKE_CURRENT_SOURCE_DIR}/bwa
-  BUILD_COMMAND  make bwa_wasm_opt
-  INSTALL_COMMAND ${CMAKE_COMMAND} -E copy ./bwa.opt.wasm ${CMAKE_CURRENT_SOURCE_DIR}/build/bwa.wasm
+                       -DWASI_SDK_PREFIX=${WASISDK_HOME}
+                       -DCMAKE_TOOLCHAIN_FILE=${WASISDK_TOOLCHAIN}
+                       -DCMAKE_SYSROOT=${WASISDK_SYSROOT}
+                       -DCMAKE_C_FLAGS=-isystem\ ${CMAKE_CURRENT_SOURCE_DIR}/../include/sse\ -isystem\ ${CMAKE_CURRENT_SOURCE_DIR}/../include/libc/musl
+                       ${CMAKE_CURRENT_SOURCE_DIR}/bwa
+  BUILD_COMMAND  make bwa_wasm_opt -j 4
+  INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_if_different ./bwa.opt.wasm ${CMAKE_CURRENT_BINARY_DIR}/bwa.wasm
+)
+
+################ bwa data ################
+ExternalProject_Add(bwa-kit
+  PREFIX            bwa-kit
+  URL               https://sourceforge.net/projects/bio-bwa/files/bwakit/bwakit-0.7.15_x64-linux.tar.bz2/download
+  URL_HASH          SHA256=0a7b11971bc7916b68e9df35a364afe77cb3000df02ffb3a6fbd1aff9be5878c
+  DOWNLOAD_NAME     bwakit-0.7.15_x64-linux.tar.bz2
+  DOWNLOAD_EXTRACT_TIMESTAMP   ON
+  DOWNLOAD_NO_EXTRACT          OFF
+  DOWNLOAD_NO_PROGRESS         ON
+  UPDATE_COMMAND    ""
+  PATCH_COMMAND     ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND     ""
+  INSTALL_COMMAND   ${CMAKE_COMMAND} -E copy_if_different
+                      ${CMAKE_CURRENT_BINARY_DIR}/bwa-kit/src/bwa-kit/resource-GRCh38/hs38DH-extra.fa
+                      ${CMAKE_CURRENT_BINARY_DIR}/hs38DH-extra.fa
 )

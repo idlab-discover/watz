@@ -23,7 +23,7 @@ int pthread_cond_destroy(pthread_cond_t *cond)
     // TA is not multithreaded, mutexes are therefore not implemented.
     return 0;
 }
-int pthread_cond_init(pthread_cond_t *cond, const void *attr)
+int pthread_cond_init(pthread_cond_t *cond, pthread_condattr_t *cond_attr)
 {
     // TA is not multithreaded, mutexes are therefore not implemented.
     return 0;
@@ -33,7 +33,7 @@ int pthread_cond_signal(pthread_cond_t *cond)
     // TA is not multithreaded, mutexes are therefore not implemented.
     return 0;
 }
-int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, uint64_t useconds)
+int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
 {
     // TA is not multithreaded, mutexes are therefore not implemented.
     return 0;

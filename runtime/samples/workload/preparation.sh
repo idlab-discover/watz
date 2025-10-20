@@ -5,15 +5,13 @@
 #
 
 readonly BUILD_CONTENT="/tmp/build_content"
-readonly WASI_SDK_VER=12
-readonly WASI_SDK_FILE="wasi-sdk-${WASI_SDK_VER}.0-linux.tar.gz"
-readonly WABT_VER=1.0.20
+readonly WABT_VER=1.0.31
 readonly WABT_FILE="wabt-${WABT_VER}-ubuntu.tar.gz"
-readonly CMAKE_VER=3.16.2
+readonly CMAKE_VER=3.25.1
 readonly CMAKE_FILE="cmake-${CMAKE_VER}-Linux-x86_64.sh"
-readonly BINARYEN_VER=version_97
+readonly BINARYEN_VER=version_111
 readonly BINARYEN_FILE="binaryen-${BINARYEN_VER}-x86_64-linux.tar.gz"
-readonly BAZEL_VER=3.7.0
+readonly BAZEL_VER=6.0.0
 readonly BAZEL_FILE=bazel-${BAZEL_VER}-installer-linux-x86_64.sh
 
 function DEBUG() {
@@ -26,28 +24,6 @@ function install_deps() {
   apt update
   apt install -y lsb-release wget software-properties-common \
       build-essential git tree zip unzip
-}
-
-#
-# install clang
-#function install_clang() {
-#  if [[ ! -f llvm.sh ]]; then
-#    wget https://apt.llvm.org/llvm.sh
-#  fi
-#
-#  chmod a+x llvm.sh
-#  ./llvm.sh 11
-#}
-
-#
-# install wasi-sdk
-function install_wasi-sdk() {
-  if [[ ! -f ${WASI_SDK_FILE} ]]; then
-    wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VER}/${WASI_SDK_FILE}
-  fi
-
-  tar zxf ${WASI_SDK_FILE} -C /opt
-  ln -sf /opt/wasi-sdk-${WASI_SDK_VER}.0 /opt/wasi-sdk
 }
 
 #
@@ -81,8 +57,8 @@ function install_emsdk() {
   git clone https://github.com/emscripten-core/emsdk.git
   cd emsdk
   git pull
-  ./emsdk install latest
-  ./emsdk activate latest
+  ./emsdk install 3.1.28
+  ./emsdk activate 3.1.28
   echo "source /opt/emsdk/emsdk_env.sh" >> "${HOME}"/.bashrc
 }
 
@@ -120,12 +96,11 @@ if DEBUG; then
   "$@"
 else
   install_deps \
-    && install_wasi-sdk \
-    && install_wabt \
+    && install_bazel \
+    && install_binaryen \
     && install_cmake \
     && install_emsdk \
-    && install_binaryen \
-    && install_bazel
+    && install_wabt
 fi
 cd - > /dev/null || exit
 DEBUG && set +xevu

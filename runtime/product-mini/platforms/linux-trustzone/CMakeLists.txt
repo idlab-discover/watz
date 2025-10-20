@@ -1,16 +1,18 @@
 # Copyright (C) 2019 Intel Corporation.  All rights reserved.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.14)
 
 project (iwasm)
 
-# TODO: Standardize the path
-SET(CMAKE_C_COMPILER /opt/watz/toolchains/aarch64/bin/aarch64-linux-gnu-gcc)
-SET(CMAKE_CXX_COMPILER /opt/watz/toolchains/aarch64/bin/aarch64-linux-gnu-g++)
+SET(CMAKE_C_COMPILER /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-gcc)
+SET(CMAKE_CXX_COMPILER /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-g++)
 
 set (WAMR_BUILD_TARGET "AARCH64")
 set (WAMR_BUILD_PLATFORM "linux-trustzone")
+
+# FRIEDRICH
+set(WAMR_BUILD_BULK_MEMORY 1)
 
 # Reset default linker flags
 set (CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
@@ -65,6 +67,11 @@ if (NOT DEFINED WAMR_BUILD_SIMD)
   set (WAMR_BUILD_SIMD 0)
 endif ()
 
+if (NOT DEFINED WAMR_BUILD_REF_TYPES)
+  # Enable reference types by default
+  set (WAMR_BUILD_REF_TYPES 1)
+endif ()
+
 if (COLLECT_CODE_COVERAGE EQUAL 1)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
 endif ()
@@ -75,6 +82,9 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -ffunction-sections -fdata-secti
                                      -fvisibility=hidden -fpie")
 
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+
+# NOTE(Friedrich) Do not enable this: WASM_ENABLE_APP_FRAMEWORK=1 
+# add_compile_definitions(WASM_ENABLE_LIBC_WASI=1)
 
 include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
 add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})

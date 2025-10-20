@@ -24,9 +24,9 @@ static void utils_print_byte_array(uint8_t *byte_array, int byte_array_len)
 	TEE_Free(buffer);
 }
 
-static void util_dump_object_attribute(TEE_ObjectHandle object, uint32_t attributeID, uint32_t size) {
+static void util_dump_object_attribute(TEE_ObjectHandle object, uint32_t attributeID, size_t size) {
     uint8_t *buffer = TEE_Malloc(size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-    uint32_t buffer_size = size;
+    size_t buffer_size = size;
     
     TEE_Result res = TEE_GetObjectBufferAttribute(object, attributeID, buffer, &buffer_size);
     
@@ -89,7 +89,7 @@ static TEE_Result generate_ecdh_keypair(ra_context_verifier *ctx) {
     return TEE_SUCCESS;
 }
 
-static TEE_Result store_msg0(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size) {
+static TEE_Result store_msg0(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size) {
     if (buffer_size < sizeof(msg0_t)) {
         EMSG("The buffer is too short to contain the msg0.");
         return TEE_ERROR_SHORT_BUFFER;
@@ -171,7 +171,7 @@ static TEE_Result derive_shared_key(ra_context_verifier *ctx) {
 
     //Store the shared secret into a byte array
     uint8_t shared_secret_raw[RA_ECDH_KEY_SIZE / 8];
-    uint32_t shared_secret_size = sizeof(shared_secret_raw);
+    size_t shared_secret_size = sizeof(shared_secret_raw);
 
     res = TEE_GetObjectBufferAttribute(ecdh_shared_secret_handle, TEE_ATTR_SECRET_VALUE, shared_secret_raw, &shared_secret_size);
     if (res != TEE_SUCCESS) {
@@ -190,7 +190,7 @@ static TEE_Result derive_shared_key(ra_context_verifier *ctx) {
     
     TEE_ObjectHandle aes_cmac_key_handle;
     uint8_t aes_cmac_key_raw[RA_AES_CMAC_KEY_SIZE / 8] = {0};
-    uint32_t aes_cmac_key_size = sizeof(aes_cmac_key_raw);
+    size_t aes_cmac_key_size = sizeof(aes_cmac_key_raw);
     TEE_Attribute aes_cmac_key_attr, mac_attr;
 
     // Create an attribute to store the raw key, which is a byte array filled of zeroes
@@ -228,7 +228,7 @@ static TEE_Result derive_shared_key(ra_context_verifier *ctx) {
     TEE_MACInit(operation_handle, NULL, 0);
 
     uint8_t mac[RA_AES_CMAC_TAG_SIZE / 8] = {0};
-    uint32_t mac_size = sizeof(mac);
+    size_t mac_size = sizeof(mac);
     res = TEE_MACComputeFinal(operation_handle, shared_secret_raw, shared_secret_size, mac, &mac_size);
     if (res != TEE_SUCCESS) {
         EMSG("TEE_MACComputeFinal failed. Error: %x", res);
@@ -266,7 +266,7 @@ out:
     return res;
 }
 
-static TEE_Result derive_shared_mac_key(ra_context_verifier *ctx, uint8_t *data, uint32_t data_length, TEE_ObjectHandle *output_key) {
+static TEE_Result derive_shared_mac_key(ra_context_verifier *ctx, uint8_t *data, size_t data_length, TEE_ObjectHandle *output_key) {
     TEE_Result res;
     TEE_Attribute aes_key_attr, mac_attr;
     TEE_ObjectHandle aes_key_handle;
@@ -281,7 +281,7 @@ static TEE_Result derive_shared_mac_key(ra_context_verifier *ctx, uint8_t *data,
 
     // Retrieve the KDK from the ECDH session
     uint8_t shared_secret[32];
-    uint32_t shared_secret_size = sizeof(shared_secret);
+    size_t shared_secret_size = sizeof(shared_secret);
     res = TEE_GetObjectBufferAttribute(ctx->ecdh_shared_key_derivation_key, TEE_ATTR_SECRET_VALUE, shared_secret, &shared_secret_size);
     if (res != TEE_SUCCESS) {
         EMSG("TEE_GetObjectBufferAttribute failed. Error: %x", res);
@@ -316,7 +316,7 @@ static TEE_Result derive_shared_mac_key(ra_context_verifier *ctx, uint8_t *data,
     TEE_MACInit(aes_cmac_op, NULL, 0);
 
     uint8_t mac[RA_AES_CMAC_TAG_SIZE / 8] = {0};
-    uint32_t mac_size = sizeof(mac);
+    size_t mac_size = sizeof(mac);
     res = TEE_MACComputeFinal(aes_cmac_op, data, data_length, mac, &mac_size);
     if (res != TEE_SUCCESS) {
         EMSG("TEE_MACComputeFinal failed. Error: %x", res);
@@ -341,7 +341,7 @@ static TEE_Result derive_shared_mac_key(ra_context_verifier *ctx, uint8_t *data,
     }
 
 #ifdef DEBUG_MESSAGE
-    DMSG("Dumping the AES key derived from AES-CMAC (size: %d):", mac_size);
+    DMSG("Dumping the AES key derived from AES-CMAC (size: %zu):", mac_size);
     util_dump_object_attribute(*output_key, TEE_ATTR_SECRET_VALUE, RA_AES_CMAC_TAG_SIZE / 8);
 #endif
 
@@ -356,11 +356,11 @@ out:
 static TEE_Result append_ecdh_public_keys_signature(ra_context_verifier *ctx) {
     TEE_Result res = TEE_SUCCESS;
     TEE_OperationHandle operation_handle;
-    uint32_t expected_digest_len = RA_HASH_SIZE / 8;
-	uint32_t digest_len = RA_HASH_SIZE;
+    size_t expected_digest_len = RA_HASH_SIZE / 8;
+	size_t digest_len = RA_HASH_SIZE;
     uint8_t digest[RA_HASH_SIZE / 8];
-    uint32_t expected_sign_len = RA_SIGNATURE_SIZE;
-    uint32_t sign_len = RA_SIGNATURE_SIZE;
+    size_t expected_sign_len = RA_SIGNATURE_SIZE;
+    size_t sign_len = RA_SIGNATURE_SIZE;
 
     // Hashing of the public keys
     res = TEE_AllocateOperation(&operation_handle, TEE_ALG_SHA256, TEE_MODE_DIGEST, 0);
@@ -382,7 +382,7 @@ static TEE_Result append_ecdh_public_keys_signature(ra_context_verifier *ctx) {
     }
 
     if (digest_len != expected_digest_len) {
-        EMSG("The hash size does not correspond to the expected value (actual: %d; expected: %d).", digest_len, expected_digest_len);
+        EMSG("The hash size does not correspond to the expected value (actual: %zu; expected: %zu).", digest_len, expected_digest_len);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -426,7 +426,7 @@ static TEE_Result append_ecdh_public_keys_signature(ra_context_verifier *ctx) {
     DMSG("TEE_AsymmetricSignDigest OK!");
 
     if (sign_len != expected_sign_len) {
-        EMSG("The signature size does not correspond to the expected value (actual: %d; expected: %d).", sign_len, expected_sign_len);
+        EMSG("The signature size does not correspond to the expected value (actual: %zu; expected: %zu).", sign_len, expected_sign_len);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -443,7 +443,7 @@ out:
 
 static TEE_Result append_mac(ra_context_verifier *ctx) {
     TEE_Result res = TEE_SUCCESS;
-    uint32_t expected_mac_size = RA_AES_CMAC_TAG_SIZE / 8;
+    size_t expected_mac_size = RA_AES_CMAC_TAG_SIZE / 8;
     
     TEE_OperationHandle aes_cmac_op;
 
@@ -467,7 +467,7 @@ static TEE_Result append_mac(ra_context_verifier *ctx) {
     TEE_MACInit(aes_cmac_op, NULL, 0);
     DMSG("TEE_MACInit OK!");
 
-    uint32_t mac_size = expected_mac_size;
+    size_t mac_size = expected_mac_size;
 
     TEE_MACUpdate(aes_cmac_op, ctx->msg1.ecdh_verifier_public_key_x_raw, ctx->msg1.ecdh_verifier_public_key_x_size);
     TEE_MACUpdate(aes_cmac_op, ctx->msg1.ecdh_verifier_public_key_y_raw, ctx->msg1.ecdh_verifier_public_key_y_size);
@@ -482,7 +482,7 @@ static TEE_Result append_mac(ra_context_verifier *ctx) {
     DMSG("TEE_MACComputeFinal OK!");
 
     if (expected_mac_size != mac_size) {
-        EMSG("The MAC tag size does not correspond to the expected value (actual: %d; expected: %d).", mac_size, expected_mac_size);
+        EMSG("The MAC tag size does not correspond to the expected value (actual: %zu; expected: %zu).", mac_size, expected_mac_size);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -499,7 +499,7 @@ out:
     return res;
 }
 
-static TEE_Result store_msg2(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size) {
+static TEE_Result store_msg2(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size) {
     if (buffer_size < sizeof(msg2_t)) {
         EMSG("The buffer that stores the msg2 is too short compared to the expected size.");
         return TEE_ERROR_SHORT_BUFFER;
@@ -518,7 +518,7 @@ static TEE_Result store_msg2(ra_context_verifier *ctx, uint8_t *buffer, uint32_t
 
 static TEE_Result verify_mac_msg2(ra_context_verifier *ctx) {
     TEE_Result res = TEE_SUCCESS;
-    uint32_t expected_mac_size = RA_AES_CMAC_TAG_SIZE / 8;
+    size_t expected_mac_size = RA_AES_CMAC_TAG_SIZE / 8;
     
     TEE_OperationHandle aes_cmac_op;
 
@@ -588,8 +588,8 @@ static TEE_Result verify_public_key_msg2_matches_msg0(ra_context_verifier *ctx) 
 static TEE_Result verify_quote_signature(ra_context_verifier *ctx) {
     TEE_Result res;
     TEE_OperationHandle operation_handle;
-    uint32_t expected_digest_len = RA_HASH_SIZE / 8;
-	uint32_t digest_len = RA_HASH_SIZE;
+    size_t expected_digest_len = RA_HASH_SIZE / 8;
+	size_t digest_len = RA_HASH_SIZE;
     uint8_t digest[RA_HASH_SIZE / 8];
 
     // Hashing of the quote
@@ -611,7 +611,7 @@ static TEE_Result verify_quote_signature(ra_context_verifier *ctx) {
     }
 
     if (digest_len != expected_digest_len) {
-        EMSG("The hash size does not correspond to the expected value (actual: %d; expected: %d).", digest_len, expected_digest_len);
+        EMSG("The hash size does not correspond to the expected value (actual: %zu; expected: %zu).", digest_len, expected_digest_len);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -654,7 +654,7 @@ out:
 static TEE_Result verify_anchor(ra_context_verifier *ctx) {
     TEE_Result res;
     uint8_t digest[RA_ANCHOR_SIZE];
-	uint32_t digest_len = RA_ANCHOR_SIZE;
+	size_t digest_len = RA_ANCHOR_SIZE;
     TEE_OperationHandle operation_handle;
 
     // Generate the anchor by hashing (G_a, G_v)
@@ -675,7 +675,7 @@ static TEE_Result verify_anchor(ra_context_verifier *ctx) {
     }
 
     if (digest_len != RA_ANCHOR_SIZE) {
-        EMSG("The hash size of the anchor does not correspond to the expected value (actual: %d; expected: %d).", digest_len, RA_ANCHOR_SIZE);
+        EMSG("The hash size of the anchor does not correspond to the expected value (actual: %zu; expected: %d).", digest_len, RA_ANCHOR_SIZE);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -700,7 +700,7 @@ out:
     return res;
 }
 
-static TEE_Result allocate_msg3(ra_context_verifier *ctx, uint32_t buffer_size) {
+static TEE_Result allocate_msg3(ra_context_verifier *ctx, size_t buffer_size) {
     // Allocate the header of msg3; the data are directly encrypted in the shared memory
     ctx->msg3_size = sizeof(msg3_t);
     if (ctx->msg3_size > buffer_size) {
@@ -714,9 +714,9 @@ static TEE_Result allocate_msg3(ra_context_verifier *ctx, uint32_t buffer_size) 
     return TEE_SUCCESS;
 }
 
-static TEE_Result encrypt_msg3(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size, uint8_t *data, uint32_t data_size) {
+static TEE_Result encrypt_msg3(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size, uint8_t *data, size_t data_size) {
     TEE_Result res;
-    uint32_t tag_size;
+    size_t tag_size;
 
 #ifdef PROFILING_MESSAGE3
     TEE_GetREETime(benchmark_get_store(PROFILING_MESSAGE3_ENCRYPT_START));
@@ -861,7 +861,7 @@ TEE_Result generate_ecdsa_keypair(ra_context_verifier *ctx) {
     return TEE_SUCCESS;
 }
 
-TEE_Result handle_msg0(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size) {
+TEE_Result handle_msg0(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size) {
     TEE_Result res;
 
 #ifdef PROFILING_MESSAGES
@@ -919,7 +919,7 @@ TEE_Result handle_msg0(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffe
     return TEE_SUCCESS;
 }
 
-TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size, uint32_t *msg1_size) {
+TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size, size_t *msg1_size) {
     TEE_Result res;
     DMSG("has been called");
 
@@ -928,7 +928,7 @@ TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buff
 #endif
 
     if (buffer_size < sizeof(msg1_t)) {
-        EMSG("the buffer is too short to contain msg1. (expected: %ld; actual: %u)", sizeof(msg1_t), buffer_size);
+        EMSG("the buffer is too short to contain msg1. (expected: %ld; actual: %zu)", sizeof(msg1_t), buffer_size);
         return TEE_ERROR_SHORT_BUFFER;
     }
 
@@ -971,7 +971,7 @@ TEE_Result prepare_msg1(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buff
     return TEE_SUCCESS;
 }
 
-TEE_Result handle_msg2(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size) {
+TEE_Result handle_msg2(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size) {
     TEE_Result res;
 
 #ifdef PROFILING_MESSAGES
@@ -1024,8 +1024,8 @@ TEE_Result handle_msg2(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffe
     return TEE_SUCCESS;
 }
 
-TEE_Result prepare_msg3(ra_context_verifier *ctx, uint8_t *buffer, uint32_t buffer_size, uint8_t *data, uint32_t data_size,
-        void *benchmark_buffer, uint32_t benchmark_buffer_size) {
+TEE_Result prepare_msg3(ra_context_verifier *ctx, uint8_t *buffer, size_t buffer_size, uint8_t *data, size_t data_size,
+        void *benchmark_buffer, size_t benchmark_buffer_size) {
     (void)&benchmark_buffer;
     (void)&benchmark_buffer_size;
 

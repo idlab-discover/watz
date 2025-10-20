@@ -6,6 +6,8 @@ set (CMAKE_TOOLCHAIN_FILE CMakeToolchain.txt)
 
 include(GNUInstallDirs)
 
+set (WASM_ENABLE_LIBC_WASI 1)
+
 add_compile_options (-Wall)
 #add_compile_options (
 #	-Wall -Wbad-function-cast -Wcast-align

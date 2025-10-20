@@ -50,9 +50,9 @@ typedef struct {
 
 typedef struct {
     uint8_t ecdh_local_public_key_x_raw[WASI_RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_local_public_key_x_size;
+    size_t ecdh_local_public_key_x_size;
     uint8_t ecdh_local_public_key_y_raw[WASI_RA_ECDH_KEY_SIZE / 8];
-    uint32_t ecdh_local_public_key_y_size;
+    size_t ecdh_local_public_key_y_size;
     ra_quote quote;
     uint8_t mac[WASI_RA_AES_CMAC_TAG_SIZE / 8];
 } msg2_t;
@@ -60,7 +60,7 @@ typedef struct {
 typedef struct {
     uint8_t iv[WASI_RA_AES_GCM_IV_SIZE];
     uint8_t tag[WASI_RA_AES_GCM_TAG_SIZE / 8];
-    uint32_t encrypted_content_size;
+    size_t encrypted_content_size;
     uint8_t encrypted_content[];
 } msg3_t;
 
@@ -82,7 +82,7 @@ typedef struct {
     msg1_t msg1;
     msg2_t msg2;
     msg3_t *msg3;
-    uint32_t msg3_size;
+    size_t msg3_size;
 
     // TCP connection
     struct sock_handle socket_handle;
@@ -91,8 +91,8 @@ typedef struct {
 TEE_Result ra_quote_collect(TEE_TASessionHandle *attestation_session, uint8_t *wasm_bytecode_hash, int wasm_bytecode_hash_size, 
         uint8_t *anchor, int anchor_size, ra_quote *quote);
 TEE_Result ra_quote_dispose(TEE_TASessionHandle *attestation_session, ra_quote *quote);
-TEE_Result ra_net_handshake(ra_context *ctx, const char* host, uint8_t *ecdsa_service_public_key_x, uint32_t ecdsa_service_public_key_x_size, 
-        uint8_t *ecdsa_service_public_key_y, uint32_t ecdsa_service_public_key_y_size, uint8_t *anchor, uint32_t anchor_size);
+TEE_Result ra_net_handshake(ra_context *ctx, const char* host, uint8_t *ecdsa_service_public_key_x, size_t ecdsa_service_public_key_x_size, 
+        uint8_t *ecdsa_service_public_key_y, size_t ecdsa_service_public_key_y_size, uint8_t *anchor, size_t anchor_size);
 TEE_Result ra_net_send_quote(ra_context *ctx, ra_quote *quote);
 TEE_Result ra_net_receive_data(ra_context *ctx, uint8_t *data, uint32_t *data_size);
 TEE_Result ra_net_dispose(ra_context *ctx);

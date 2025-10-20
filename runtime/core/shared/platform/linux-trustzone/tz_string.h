@@ -8,6 +8,7 @@ extern "C" {
 size_t strcspn(const char *s1, const char *s2);
 char * strerror (int n);
 size_t strspn(const char *s, const char *accept);
+char* strtok( char* str, const char* delim );
 
 #ifdef __cplusplus
 }

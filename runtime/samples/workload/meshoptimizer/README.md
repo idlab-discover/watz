@@ -32,7 +32,7 @@ $ em++ tools/codecbench.cpp src/vertexcodec.cpp src/vertexfilter.cpp \
        src/spatialorder.cpp src/allocator.cpp src/vcacheanalyzer.cpp \
        src/vfetchoptimizer.cpp src/overdrawoptimizer.cpp src/simplifier.cpp \
        src/stripifier.cpp -O3 -msimd128 \
-       -s TOTAL_MEMORY=268435456 -s "EXPORTED_FUNCTIONS=['_main']" \
+       -s TOTAL_MEMORY=268435456 \
        -o codecbench.wasm
 $ ls -l codecbench.wasm
 ```
@@ -44,14 +44,14 @@ Firstly please build iwasm with simd support:
 ``` shell
 $ cd <wamr dir>/product-mini/platforms/linux/
 $ mkdir build && cd build
-$ cmake .. -DWAMR_BUILD_SIMD=1
+$ cmake ..
 $ make
 ```
 
 Then compile wasm file to aot file and run:
 
 ``` shell
-$ <wamr dir>/wamr-compiler/build/wamrc --enable-simd -o codecbench.aot codecbench.wasm
+$ <wamr dir>/wamr-compiler/build/wamrc -o codecbench.aot codecbench.wasm
 $ <wamr dir>/product-mini/platforms/linux/build/iwasm codecbench.aot
 ```
 

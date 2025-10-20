@@ -49,6 +49,14 @@ struct msghdr {
     int msg_flags;
 };
 
+#ifndef FRIEDRICH_APP_FRAMEWORK
+uint32_t ntohl(uint32_t value);
+
+uint32_t htonl(uint32_t value);
+
+uint16_t htons(uint16_t value);
+#endif 
+
 int socket(int domain, int type, int protocol);
 int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);

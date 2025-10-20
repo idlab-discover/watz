@@ -10,10 +10,10 @@
 typedef struct wamr_context_
 {
     uint8_t *wasm_bytecode;
-    uint32_t wasm_bytecode_size;
+    size_t wasm_bytecode_size;
     uint8_t wasm_bytecode_hash[RA_HASH_SIZE / 8];
     void *heap_buf;
-    uint32_t heap_size;
+    size_t heap_size;
     wasm_module_t module;
     wasm_module_inst_t module_inst;
     NativeSymbol *native_symbols;

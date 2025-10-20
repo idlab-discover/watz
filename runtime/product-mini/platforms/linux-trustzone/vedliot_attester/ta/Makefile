@@ -7,12 +7,14 @@ ifdef TA_DATA_SIZE
 endif
 
 CFG_TEE_TA_LOG_LEVEL ?= 4
+CFG_TA_OPTEE_CORE_API_COMPAT_1_1=y
+
 CPPFLAGS += -O3 -DCFG_TEE_TA_LOG_LEVEL=$(CFG_TEE_TA_LOG_LEVEL) $(TA_DATA_SIZE_FLAG) $(PROFILING_FLAG)
+CPPFLAGS += -DFRIEDRICH_BASE -DFRIEDRICH_DEBUG
 
 # The UUID for the Trusted Application
 BINARY=bc20728a-6a28-49d8-98d8-f22e7535f137
 
-# TODO: TA_DEV_KIT_DIR needs to be specified
 -include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
 
 ifeq ($(wildcard $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk), )

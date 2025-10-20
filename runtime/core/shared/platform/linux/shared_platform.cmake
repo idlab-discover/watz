@@ -3,7 +3,7 @@
 
 set (PLATFORM_SHARED_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-add_definitions(-DBH_PLATFORM_LINUX)
+add_compile_definitions(BH_PLATFORM_LINUX FRIEDRICH_DEBUG)
 
 include_directories(${PLATFORM_SHARED_DIR})
 include_directories(${PLATFORM_SHARED_DIR}/../include)

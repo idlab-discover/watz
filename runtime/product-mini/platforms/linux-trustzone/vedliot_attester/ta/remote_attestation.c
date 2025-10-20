@@ -33,9 +33,9 @@ static void utils_print_byte_array(uint8_t *byte_array, int byte_array_len)
 }
 
 #ifdef DEBUG_MESSAGE
-static void util_dump_object_attribute(TEE_ObjectHandle object, uint32_t attributeID, uint32_t size) {
+static void util_dump_object_attribute(TEE_ObjectHandle object, size_t attributeID, size_t size) {
     uint8_t *buffer = TEE_Malloc(size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-    uint32_t buffer_size = size;
+    size_t buffer_size = size;
     
     TEE_Result res = TEE_GetObjectBufferAttribute(object, attributeID, buffer, &buffer_size);
     
@@ -51,15 +51,15 @@ static void util_dump_object_attribute(TEE_ObjectHandle object, uint32_t attribu
 #endif
 
 static TEE_Result receive_socket_per_chunk(TEE_iSocket *socket, TEE_iSocketHandle socketHandle, 
-        uint32_t chunk_size, uint8_t *data, uint32_t data_size, uint32_t *transfered_data_out) {
+        uint32_t chunk_size, uint8_t *data, size_t data_size, size_t *transfered_data_out) {
     TEE_Result res = TEE_SUCCESS;
     uint8_t *data_cursor = data;
-    uint32_t transfered_data = 0;
+    size_t transfered_data = 0;
     
     // Read the stream of data per chunk
     while(chunk_size > 0 && transfered_data < data_size) {
         if (transfered_data > data_size) {
-            EMSG("The data buffer is too small (requested: %u).", transfered_data);
+            EMSG("The data buffer is too small (requested: %zu).", transfered_data);
             return TEE_ERROR_SHORT_BUFFER;
         }
 
@@ -190,10 +190,10 @@ static TEE_Result send_msg0(ra_context *ctx) {
     DMSG("== [+: DUMP MSG0 (struct size: %ld)] ======================== ", sizeof(msg0_t));
     DMSG(" - ecdh_local_public_key_x_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg0.ecdh_local_public_key_x_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_local_public_key_x_size (size: %ld): %u", sizeof(uint32_t), ctx->msg0.ecdh_local_public_key_x_size);
+    DMSG(" - ecdh_local_public_key_x_size (size: %ld): %zu", sizeof(size_t), ctx->msg0.ecdh_local_public_key_x_size);
     DMSG(" - ecdh_local_public_key_y_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg0.ecdh_local_public_key_y_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_local_public_key_y_size (size: %ld): %u", sizeof(uint32_t), ctx->msg0.ecdh_local_public_key_y_size);
+    DMSG(" - ecdh_local_public_key_y_size (size: %ld): %zu", sizeof(size_t), ctx->msg0.ecdh_local_public_key_y_size);
     DMSG(" - full dump:");
     utils_print_byte_array((uint8_t*) &ctx->msg0, sizeof(msg0_t));
     DMSG("== [-: DUMP MSG0] =========================================== ");
@@ -205,7 +205,7 @@ static TEE_Result send_msg0(ra_context *ctx) {
 static TEE_Result receive_msg1(ra_context *ctx) {
     TEE_Result res;
     uint8_t msg1[sizeof(msg1_t)];
-    uint32_t msg1_size = sizeof(msg1_t);
+    size_t msg1_size = sizeof(msg1_t);
 
     // Receive msg1
     res = receive_socket_per_chunk(ctx->socket_handle.socket, ctx->socket_handle.ctx, msg1_size, msg1, msg1_size, &msg1_size);
@@ -215,7 +215,7 @@ static TEE_Result receive_msg1(ra_context *ctx) {
     }
 
     if (msg1_size < sizeof(msg1_t)) {
-        EMSG("The size of the msg1 received is smaller than the expected msg1 (expected: %ld; actual: %u).", sizeof(msg1_t), msg1_size);
+        EMSG("The size of the msg1 received is smaller than the expected msg1 (expected: %ld; actual: %zu).", sizeof(msg1_t), msg1_size);
         return TEE_ERROR_GENERIC;
     }
 
@@ -223,19 +223,19 @@ static TEE_Result receive_msg1(ra_context *ctx) {
     TEE_MemMove(&ctx->msg1, msg1, sizeof(msg1_t));
 
 #ifdef DEBUG_MESSAGE
-    DMSG("== [+: DUMP MSG1 (struct size: %ld; received: %u)] ======================== ", sizeof(msg1_t), msg1_size);
+    DMSG("== [+: DUMP MSG1 (struct size: %ld; received: %zu)] ======================== ", sizeof(msg1_t), msg1_size);
     DMSG(" - ecdh_verifier_public_key_x_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg1.ecdh_verifier_public_key_x_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_verifier_public_key_x_size (size: %ld): %u", sizeof(uint32_t), ctx->msg1.ecdh_verifier_public_key_x_size);
+    DMSG(" - ecdh_verifier_public_key_x_size (size: %ld): %zu", sizeof(size_t), ctx->msg1.ecdh_verifier_public_key_x_size);
     DMSG(" - ecdh_verifier_public_key_y_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg1.ecdh_verifier_public_key_y_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_verifier_public_key_y_size (size: %ld): %u", sizeof(uint32_t), ctx->msg1.ecdh_verifier_public_key_y_size);
+    DMSG(" - ecdh_verifier_public_key_y_size (size: %ld): %zu", sizeof(size_t), ctx->msg1.ecdh_verifier_public_key_y_size);
     DMSG(" - ecdsa_verifier_public_key_x_raw (size: %d):", WASI_RA_ECDSA_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg1.ecdsa_verifier_public_key_x_raw, WASI_RA_ECDSA_KEY_SIZE / 8);
-    DMSG(" - ecdsa_verifier_public_key_x_size (size: %ld): %u", sizeof(uint32_t), ctx->msg1.ecdsa_verifier_public_key_x_size);
+    DMSG(" - ecdsa_verifier_public_key_x_size (size: %ld): %zu", sizeof(size_t), ctx->msg1.ecdsa_verifier_public_key_x_size);
     DMSG(" - ecdsa_verifier_public_key_y_raw (size: %d):", WASI_RA_ECDSA_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg1.ecdsa_verifier_public_key_y_raw, WASI_RA_ECDSA_KEY_SIZE / 8);
-    DMSG(" - ecdsa_verifier_public_key_y_size (size: %ld): %u", sizeof(uint32_t), ctx->msg1.ecdsa_verifier_public_key_y_size);
+    DMSG(" - ecdsa_verifier_public_key_y_size (size: %ld): %zu", sizeof(size_t), ctx->msg1.ecdsa_verifier_public_key_y_size);
     DMSG(" - ecdh_signature (size: %d):", RA_SIGNATURE_SIZE);
     utils_print_byte_array(ctx->msg1.ecdh_signature, RA_SIGNATURE_SIZE);
     DMSG(" - mac (size: %d):", WASI_RA_AES_CMAC_TAG_SIZE / 8);
@@ -284,8 +284,8 @@ out:
     return res;
 }
 
-static TEE_Result verify_service_public_key(ra_context *ctx, uint8_t *ecdsa_service_public_key_x, uint32_t ecdsa_service_public_key_x_size,
-        uint8_t *ecdsa_service_public_key_y, uint32_t ecdsa_service_public_key_y_size) {
+static TEE_Result verify_service_public_key(ra_context *ctx, uint8_t *ecdsa_service_public_key_x, size_t ecdsa_service_public_key_x_size,
+        uint8_t *ecdsa_service_public_key_y, size_t ecdsa_service_public_key_y_size) {
     // For internal testing, if no public key is passed, skip the verification
     if (ecdsa_service_public_key_x_size == 0 && ecdsa_service_public_key_y_size == 0) return TEE_SUCCESS;
     
@@ -365,7 +365,7 @@ static TEE_Result verify_ecdh_public_key_signature(ra_context *ctx) {
     }
 
     if (digest_len != expected_digest_len) {
-        EMSG("The hash size does not correspond to the expected value (actual: %d; expected: %d).", digest_len, expected_digest_len);
+        EMSG("The hash size does not correspond to the expected value (actual: %ud; expected: %ud).", digest_len, expected_digest_len);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -399,13 +399,13 @@ static TEE_Result verify_ecdh_public_key_signature(ra_context *ctx) {
         IMSG("Dumping the public key of the verifier (Y):");
         utils_print_byte_array(ctx->msg1.ecdsa_verifier_public_key_y_raw, ctx->msg1.ecdsa_verifier_public_key_y_size);
         IMSG("!!! Details of digest arguments !!!");
-        IMSG(" > ctx->msg0.ecdh_local_public_key_x_raw (%u)", ctx->msg0.ecdh_local_public_key_x_size);
+        IMSG(" > ctx->msg0.ecdh_local_public_key_x_raw (%ud)", ctx->msg0.ecdh_local_public_key_x_size);
         utils_print_byte_array(ctx->msg0.ecdh_local_public_key_x_raw, ctx->msg0.ecdh_local_public_key_x_size);
-        IMSG(" > ctx->msg0.ecdh_local_public_key_y_raw (%u)", ctx->msg0.ecdh_local_public_key_y_size);
+        IMSG(" > ctx->msg0.ecdh_local_public_key_y_raw (%ud)", ctx->msg0.ecdh_local_public_key_y_size);
         utils_print_byte_array(ctx->msg0.ecdh_local_public_key_y_raw, ctx->msg0.ecdh_local_public_key_y_size);
-        IMSG(" > ctx->msg1.ecdh_verifier_public_key_x_raw (%u)", ctx->msg1.ecdh_verifier_public_key_x_size);
+        IMSG(" > ctx->msg1.ecdh_verifier_public_key_x_raw (%ud)", ctx->msg1.ecdh_verifier_public_key_x_size);
         utils_print_byte_array(ctx->msg1.ecdh_verifier_public_key_x_raw, ctx->msg1.ecdh_verifier_public_key_x_size);
-        IMSG(" > ctx->msg1.ecdh_verifier_public_key_y_raw (%u)", ctx->msg1.ecdh_verifier_public_key_y_size);
+        IMSG(" > ctx->msg1.ecdh_verifier_public_key_y_raw (%ud)", ctx->msg1.ecdh_verifier_public_key_y_size);
         utils_print_byte_array(ctx->msg1.ecdh_verifier_public_key_y_raw, ctx->msg1.ecdh_verifier_public_key_y_size);
         goto out;
     }
@@ -417,7 +417,7 @@ static TEE_Result verify_ecdh_public_key_signature(ra_context *ctx) {
     DMSG("TEE_AsymmetricSignDigest OK!");
 
     if (sign_len != expected_sign_len) {
-        EMSG("The signature size does not correspond to the expected value (actual: %d; expected: %d).", sign_len, expected_sign_len);
+        EMSG("The signature size does not correspond to the expected value (actual: %ud; expected: %ud).", sign_len, expected_sign_len);
         res = TEE_ERROR_GENERIC;
         goto out;
     }
@@ -431,7 +431,7 @@ out:
 
 static TEE_Result verify_msg1_mac(ra_context *ctx) {
     TEE_Result res = TEE_SUCCESS;
-    uint32_t expected_mac_size = WASI_RA_AES_CMAC_TAG_SIZE / 8;
+    size_t expected_mac_size = WASI_RA_AES_CMAC_TAG_SIZE / 8;
     
     TEE_OperationHandle aes_cmac_op;
 
@@ -479,13 +479,13 @@ out:
     return res;
 }
 
-static TEE_Result generate_anchor(ra_context *ctx, uint8_t *anchor, uint32_t anchor_size) {
+static TEE_Result generate_anchor(ra_context *ctx, uint8_t *anchor, size_t anchor_size) {
     TEE_Result res;
 	uint32_t digest_len = RA_ANCHOR_SIZE;
     TEE_OperationHandle operation_handle;
 
     if (anchor_size != RA_ANCHOR_SIZE) {
-        EMSG("The anchor buffer must have a size buffer of %u.", RA_ANCHOR_SIZE);
+        EMSG("The anchor buffer must have a size buffer of %d.", RA_ANCHOR_SIZE);
         return TEE_ERROR_SECURITY;
     }
 
@@ -575,7 +575,7 @@ static TEE_Result derive_shared_key(ra_context *ctx) {
     
     TEE_ObjectHandle aes_cmac_key_handle;
     uint8_t aes_cmac_key_raw[WASI_RA_AES_CMAC_KEY_SIZE / 8] = {0};
-    uint32_t aes_cmac_key_size = sizeof(aes_cmac_key_raw);
+    size_t aes_cmac_key_size = sizeof(aes_cmac_key_raw);
     TEE_Attribute aes_cmac_key_attr, mac_attr;
 
     // Create an attribute to store the raw key, which is a byte array filled of zeroes
@@ -791,15 +791,15 @@ static TEE_Result prepare_msg2(ra_context *ctx, ra_quote *quote) {
     DMSG("== [+: DUMP MSG2 (struct size: %ld)] ======================== ", sizeof(msg2_t));
     DMSG(" - ecdh_local_public_key_x_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg2.ecdh_local_public_key_x_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_local_public_key_x_size (size: %ld): %u", sizeof(uint32_t), ctx->msg2.ecdh_local_public_key_x_size);
+    DMSG(" - ecdh_local_public_key_x_size (size: %ld): %zu", sizeof(size_t), ctx->msg2.ecdh_local_public_key_x_size);
     DMSG(" - ecdh_local_public_key_y_raw (size: %d):", WASI_RA_ECDH_KEY_SIZE / 8);
     utils_print_byte_array(ctx->msg2.ecdh_local_public_key_y_raw, WASI_RA_ECDH_KEY_SIZE / 8);
-    DMSG(" - ecdh_local_public_key_y_size (size: %ld): %u", sizeof(uint32_t), ctx->msg2.ecdh_local_public_key_y_size);
+    DMSG(" - ecdh_local_public_key_y_size (size: %ld): %zu", sizeof(size_t), ctx->msg2.ecdh_local_public_key_y_size);
     DMSG(" - quote (size: %ld):", sizeof(ra_quote));
     utils_print_byte_array((uint8_t*) &ctx->msg2.quote, sizeof(ra_quote));
     DMSG(" - quote.anchor (size: %d):", RA_ANCHOR_SIZE);
     utils_print_byte_array(ctx->msg2.quote.anchor, RA_ANCHOR_SIZE);
-    DMSG(" - quote.version (size: %ld): %u", sizeof(uint32_t), ctx->msg2.quote.version);
+    DMSG(" - quote.version (size: %ld): %zu", sizeof(size_t), ctx->msg2.quote.version);
     DMSG(" - quote.claim_hash (size: %d):", RA_CLAIM_HASH_SIZE);
     utils_print_byte_array(ctx->msg2.quote.claim_hash, RA_CLAIM_HASH_SIZE);
     DMSG(" - quote.attestation_key (size: %d):", RA_ATTESTATION_KEY_SIZE);
@@ -842,7 +842,7 @@ static TEE_Result allocate_msg3(ra_context *ctx, uint32_t data_size) {
     ctx->msg3_size = sizeof(msg3_t) + data_size + WASI_RA_AES_GCM_CIPHERTEXT_OVERHEAD;
     ctx->msg3 = TEE_Malloc(ctx->msg3_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
     
-    DMSG("allocate_msg3 TEE_Malloc(%u) OK", ctx->msg3_size);
+    DMSG("allocate_msg3 TEE_Malloc(%zu) OK", ctx->msg3_size);
 
     return TEE_SUCCESS;
 }
@@ -857,17 +857,17 @@ static TEE_Result receive_msg3(ra_context *ctx) {
     }
 
 #ifdef DEBUG_MESSAGE
-    DMSG("msg3 received (buffer size: %u)! Dumping first 30 bytes:", ctx->msg3_size);
+    DMSG("msg3 received (buffer size: %zu)! Dumping first 30 bytes:", ctx->msg3_size);
     utils_print_byte_array((uint8_t*) ctx->msg3, 30);
 #endif
 
 #ifdef DEBUG_MESSAGE
-    DMSG("== [+: DUMP MSG3 (struct size: %ld, buffer size: %u)] ======================== ", sizeof(msg3_t), ctx->msg3_size);
+    DMSG("== [+: DUMP MSG3 (struct size: %ld, buffer size: %zu)] ======================== ", sizeof(msg3_t), ctx->msg3_size);
     DMSG(" - iv (size: %d):", WASI_RA_AES_GCM_IV_SIZE);
     utils_print_byte_array(ctx->msg3->iv, WASI_RA_AES_GCM_IV_SIZE);
     DMSG(" - tag (size: %d):", WASI_RA_AES_GCM_TAG_SIZE / 8);
     utils_print_byte_array(ctx->msg3->tag, WASI_RA_AES_GCM_TAG_SIZE / 8);
-    DMSG(" - encrypted_content_size (size: %ld): %u", sizeof(uint32_t), ctx->msg3->encrypted_content_size);
+    DMSG(" - encrypted_content_size (size: %ld): %zu", sizeof(size_t), ctx->msg3->encrypted_content_size);
     DMSG(" - encrypted_content (cropped to first 50 bytes):");
     utils_print_byte_array(ctx->msg3->encrypted_content, 50);
     //DMSG(" - encrypted_content (full):");
@@ -917,7 +917,7 @@ static TEE_Result decrypt_msg3(ra_context *ctx, uint8_t *data, uint32_t *data_si
     }
 
 #ifdef DEBUG_MESSAGE
-    DMSG("Dumping first 30 bytes of data of the msg3 (size: %u):", *data_size);
+    DMSG("Dumping first 30 bytes of data of the msg3 (size: %zu):", *data_size);
     utils_print_byte_array(data, 30);
 #endif
 
@@ -959,7 +959,7 @@ TEE_Result ra_quote_collect(TEE_TASessionHandle *attestation_session, uint8_t *w
     TEE_GetREETime(benchmark_get_store(PROFILING_MESSAGES_QUOTE_START));
 #endif
 
-    uint32_t param_types;
+    size_t param_types;
 	TEE_Param params[TEE_NUM_PARAMS];
 
 	param_types = TEE_PARAM_TYPES(
@@ -1003,8 +1003,8 @@ TEE_Result ra_quote_dispose(TEE_TASessionHandle *attestation_session, ra_quote *
     return TEE_SUCCESS;
 }
 
-TEE_Result ra_net_handshake(ra_context *ctx, const char* host, uint8_t *ecdsa_service_public_key_x, uint32_t ecdsa_service_public_key_x_size, 
-        uint8_t *ecdsa_service_public_key_y, uint32_t ecdsa_service_public_key_y_size, uint8_t *anchor, uint32_t anchor_size) {
+TEE_Result ra_net_handshake(ra_context *ctx, const char* host, uint8_t *ecdsa_service_public_key_x, size_t ecdsa_service_public_key_x_size, 
+        uint8_t *ecdsa_service_public_key_y, size_t ecdsa_service_public_key_y_size, uint8_t *anchor, size_t anchor_size) {
     TEE_Result res;
     (void)host;
 
@@ -1151,7 +1151,7 @@ TEE_Result ra_net_receive_data(ra_context *ctx, uint8_t *data, uint32_t *data_si
         EMSG("receive_msg3 failed. Error: %x", res);
         return res;
     }
-    DMSG("Received msg3! Size of encrypted content: %u", ctx->msg3->encrypted_content_size);
+    DMSG("Received msg3! Size of encrypted content: %zu", ctx->msg3->encrypted_content_size);
 
 #ifdef PROFILING_MESSAGE3
     TEE_GetREETime(benchmark_get_store(PROFILING_MESSAGE3_DECRYPT_START));

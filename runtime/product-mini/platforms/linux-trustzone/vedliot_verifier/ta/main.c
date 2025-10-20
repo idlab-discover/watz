@@ -3,7 +3,6 @@
 
 #include "logging.h"
 #include "wasm_export.h"
-#include "bh_platform.h"
 
 #include "vedliot_verifier_ta.h"
 #include "verifier.h"
@@ -91,7 +90,7 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx, uint32_t cmd_id, uint32_t 
 					     TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE);
         if (exp_param_types != param_types) return TEE_ERROR_BAD_PARAMETERS;
 
-        uint32_t msg1_size;
+        size_t msg1_size;
         res = prepare_msg1(&context_singleton, params[0].memref.buffer, params[0].memref.size, &msg1_size);
         params[1].value.a = msg1_size;
 

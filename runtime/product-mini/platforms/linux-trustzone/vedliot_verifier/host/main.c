@@ -44,11 +44,11 @@
 
 #define BENCHMARK_START(X)                          \
     struct timespec start_##X, end_##X, X;   \
-    clock_gettime(CLOCK_MONOTONIC, &start_##X)      \
+    clock_gettime(CLOCK_REALTIME, &start_##X)      \
 
 #define BENCHMARK_STOP(X)                                   \
     do {                                                    \
-        clock_gettime(CLOCK_MONOTONIC, &end_##X);           \
+        clock_gettime(CLOCK_REALTIME, &end_##X);           \
         timespec_diff(&end_##X, &start_##X, &X);            \
     } while(0)
 
@@ -58,7 +58,7 @@
 typedef struct {
     uint8_t iv[WASI_RA_AES_GCM_IV_SIZE];
     uint8_t tag[RA_AES_GCM_TAG_SIZE / 8];
-    uint32_t encrypted_content_size;
+    size_t encrypted_content_size;
     uint8_t encrypted_content[];
 } msg3_t;
 
@@ -69,7 +69,7 @@ typedef struct _tee_ctx {
 } tee_ctx;
 
 static uint8_t *secret = (uint8_t*)SECRET_DATA;
-static uint32_t secret_size = sizeof(SECRET_DATA);
+static size_t secret_size = sizeof(SECRET_DATA);
 
 static void prepare_tee_session(tee_ctx* ctx)
 {
@@ -90,7 +90,7 @@ static void prepare_tee_session(tee_ctx* ctx)
 			res, origin);
 }
 
-static void bootstrap_secret(tee_ctx* ctx, uint8_t *secret, uint32_t secret_size) {
+static void bootstrap_secret(tee_ctx* ctx, uint8_t *secret, size_t secret_size) {
 	TEEC_Operation op;
 	uint32_t origin;
 	TEEC_Result res;
@@ -129,7 +129,7 @@ static void receive_msg0(tee_ctx* ctx, uint8_t *buffer, size_t buffer_size)
     }
 }
 
-static uint32_t prepare_msg1(tee_ctx* ctx, uint8_t *buffer, size_t buffer_size)
+static size_t prepare_msg1(tee_ctx* ctx, uint8_t *buffer, size_t buffer_size)
 {
 	TEEC_Operation op;
 	uint32_t origin;
@@ -203,11 +203,11 @@ static void prepare_msg3(tee_ctx* ctx, uint8_t *buffer, size_t buffer_size, uint
 
 static void handle_connection(int sockfd, tee_ctx* ctx)
 {
-	uint32_t buff_size = secret_size + sizeof(msg3_t) + RA_AES_GCM_CIPHERTEXT_OVERHEAD;
+	size_t buff_size = secret_size + sizeof(msg3_t) + RA_AES_GCM_CIPHERTEXT_OVERHEAD;
     uint8_t *buff = malloc(buff_size);
 	bzero(buff, buff_size);
 
-	uint32_t benchmark_buffer_size = 256;
+	size_t benchmark_buffer_size = 256;
     uint8_t *benchmark_buffer = malloc(benchmark_buffer_size);
 	bzero(benchmark_buffer, benchmark_buffer_size);
 
@@ -216,7 +216,7 @@ static void handle_connection(int sockfd, tee_ctx* ctx)
 	receive_msg0(ctx, buff, buff_size);
 
 	dprintf("Sending msg1..\n");
-	uint32_t msg1_size = prepare_msg1(ctx, buff, buff_size);
+	size_t msg1_size = prepare_msg1(ctx, buff, buff_size);
 	dprintf("msg1_size: %u\n", msg1_size);
 	write(sockfd, buff, msg1_size);
 

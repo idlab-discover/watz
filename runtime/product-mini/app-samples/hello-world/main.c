@@ -6,15 +6,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     char *buf;
 
-    if (argc > 1) {
-        printf("Hello %s!\n", argv[1]);
-    } else {
-        printf("Hello world!\n");
-    }
+    printf("Hello world!\n");
 
     buf = malloc(1024);
     if (!buf) {

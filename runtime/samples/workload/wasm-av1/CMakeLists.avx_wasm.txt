@@ -1,12 +1,14 @@
 # Copyright (C) 2019 Intel Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.14)
 
 project(testavx)
 
-# a workaround to let aom find our non-public headers
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include/libc)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake)
+
+################ dependencies ################
+find_package(Binaryen 111 REQUIRED)
 
 ################  AOM  ################
 set(ENABLE_CCACHE ON)
@@ -58,18 +60,9 @@ target_link_libraries(${PROJECT_NAME}
 
 add_dependencies(${PROJECT_NAME} aom)
 
-find_program(WASM_OPT
-    NAMES wasm-opt
-    PATHS /opt/binaryen-version_97/bin /opt/binaryen/bin
-)
-
-if (NOT WASM_OPT)
-  message(WARNING "can not find wasm-opt and will not optimize any wasm module")
-endif()
-
 add_custom_target(${PROJECT_NAME}_opt ALL
   COMMAND
-    ${WASM_OPT} -Oz --enable-simd -o ${PROJECT_NAME}.opt.wasm ${PROJECT_NAME}.wasm
+    ${Binaryen_WASM_OPT} -Oz --enable-simd -o ${PROJECT_NAME}.opt.wasm ${PROJECT_NAME}.wasm
   BYPRODUCTS
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.opt.wasm
   WORKING_DIRECTORY
