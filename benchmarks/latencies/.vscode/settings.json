@@ -1,0 +1,6 @@
+{
+    "cmake.sourceDirectory": "/opt/watz/benchmarks/latencies/native",
+    "files.associations": {
+        "cstdint": "c"
+    }
+}

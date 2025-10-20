@@ -16,6 +16,6 @@ do
 
     for iterations in {1..50}
     do
-        echo "$local_file,$(sshpass -p "$BM_BOARD_USER" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size polybench-wasm/$local_file 2>&1")" | tee -a $LOGS_DIR/polybench/ree-wasm.csv
+        echo "$local_file,$(sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size polybench-wasm/$local_file 2>&1")" | tee -a $LOGS_DIR/polybench/ree-wasm.csv
     done
 done

@@ -3,19 +3,15 @@
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 source $SCRIPT_DIR/../common.sh
 
-# ./build-native.sh
-./build-runtime.sh
-# ./build-wasm.sh
-
-# PLATFORM=$(uname -s | tr A-Z a-z)
+PLATFORM=$(uname -s | tr A-Z a-z)
 
 OUT_DIR=$SCRIPT_DIR/out
-WAMRC_CMD=$WATZ_RUNTIME_DIR/wamr-compiler/build/wamrc
+WAMRC_CMD=$PWD/../../../wamr-compiler/build/wamrc
 POLYBENCH_CASES="datamining linear-algebra medley stencils"
 
 announcebuild "polybench (WASM)"
 
-if [ ! -d polybench-srcs ]; then
+if [ ! -d PolyBenchC-4.2.1 ]; then
   git clone https://github.com/MatthiasJReisinger/PolyBenchC-4.2.1.git polybench-srcs
 fi
 
@@ -32,9 +28,7 @@ for case in $POLYBENCH_CASES; do
     fi
 
     announce "Build ${file_name%.*}_native"
-    # gcc -O3 -I utilities -I ${file%/*} utilities/polybench.c ${file} \
-    #   -DPOLYBENCH_TIME -lm -o ${OUT_DIR}/${file_name%.*}_native
-    /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-gcc -O3 -I utilities -I ${file%/*} utilities/polybench.c ${file} \
+    gcc -O3 -I utilities -I ${file%/*} utilities/polybench.c ${file} \
       -DPOLYBENCH_TIME -lm -o ${OUT_DIR}/${file_name%.*}_native
 
     announce "Build ${file_name%.*}.wasm"
@@ -48,13 +42,13 @@ for case in $POLYBENCH_CASES; do
     # announce "Compile ${file_name%.*}.wasm into ${file_name%.*}.aot"
     # ${WAMRC_CMD} -o ${OUT_DIR}/${file_name%.*}.aot \
     #   ${OUT_DIR}/${file_name%.*}.wasm
-    compileaot $OUT_DIR/${file_name%.*}
+    compileaot $OUT_DIR/${file_name.*}
 
-    # if [[ ${PLATFORM} == "linux" ]]; then
-    #   announce "Compile ${file_name%.*}.wasm into ${file_name%.*}_segue.aot"
-    #   ${WAMRC_CMD} --enable-segue -o ${OUT_DIR}/${file_name%.*}_segue.aot \
-    #     ${OUT_DIR}/${file_name%.*}.wasm
-    # fi
+    if [[ ${PLATFORM} == "linux" ]]; then
+      announce "Compile ${file_name%.*}.wasm into ${file_name%.*}_segue.aot"
+      ${WAMRC_CMD} --enable-segue -o ${OUT_DIR}/${file_name%.*}_segue.aot \
+        ${OUT_DIR}/${file_name%.*}.wasm
+    fi
   done
 done
 

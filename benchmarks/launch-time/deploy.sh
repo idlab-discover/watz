@@ -7,5 +7,4 @@ deploywatz
 
 announcedeploy "launch-time"
 cd $SCRIPT_DIR
-rsync --progress -r $BM_BUILDER_HOSTNAME:$BM_BUILDER_PATH/launch-time/out/\*.aot out/
-sshpass -p "$BM_BOARD_USER" rsync --progress -r out/ $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/root/launch-time
+sshpass -p "$BM_BOARD_PASS" rsync --progress -r out/*.aot $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/root/launch-time

@@ -80,7 +80,7 @@ if ($GEN_CONFIG) {
 open FILE, '>'.$TARGET_DIR.'/config.mk';
 
 print FILE << "EOF";
-CC=/opt/watz/toolchains/aarch64/bin/aarch64-linux-gnu-gcc 
+CC=/home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-gcc 
 CFLAGS=-O3 -DMEDIUM_DATASET -DPOLYBENCH_TIME -DPOLYBENCH_CLOCK_TIMER
 EOF
 

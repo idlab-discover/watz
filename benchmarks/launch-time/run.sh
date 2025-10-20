@@ -17,7 +17,7 @@ do
     do
         wasm_heap_size=$((($size + 4) * 1024 * 1024))
 
-        echo "$size,$(sshpass -p $BM_BOARD_USER ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_attester $wasm_heap_size launch-time/bm_launch-time_$size.aot 2>&1")" | tee -a $LOGS_DIR/launch-time/general.csv
+        echo "$size,$(sshpass -p $BM_BOARD_PASS ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_attester $wasm_heap_size launch-time/bm_launch-time_$size.aot 2>&1")" | tee -a $LOGS_DIR/launch-time/general.csv
         safesleep
     done
 done
