@@ -8,9 +8,10 @@
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
 
-#define FIXED_BUFFER_SIZE (1<<9)
+#define FIXED_BUFFER_SIZE (1 << 9)
 
-int bh_platform_init()
+int
+bh_platform_init()
 {
     return 0;
 }
@@ -38,7 +39,8 @@ os_free(void *ptr)
     TEE_Free(ptr);
 }
 
-int os_printf(const char *message, ...)
+int
+os_printf(const char *message, ...)
 {
     /*
      * Defined static to reduce the pressure on the stack allocation.
@@ -57,7 +59,8 @@ int os_printf(const char *message, ...)
     return 0;
 }
 
-int os_vprintf(const char * format, va_list arg)
+int
+os_vprintf(const char *format, va_list arg)
 {
     /*
      * Defined static to reduce the pressure on the stack allocation.
@@ -67,22 +70,24 @@ int os_vprintf(const char * format, va_list arg)
      */
     static char msg[FIXED_BUFFER_SIZE] = { '\0' };
     vsnprintf(msg, FIXED_BUFFER_SIZE, format, arg);
-    
+
     EMSG(msg);
 
     return 0;
 }
 
-char *strcpy(char *dest, const char *src)
+char *
+strcpy(char *dest, const char *src)
 {
     const unsigned char *s = src;
     unsigned char *d = dest;
 
-    while ((*d++ = *s++));
+    while ((*d++ = *s++))
+        ;
     return dest;
 }
 
-//NOTE(Friedrich) Dit is een zelfgeschreven functie, maar zwaar geinspireerd van SGX
+// NOTE(Friedrich) Taken from Intel SGX
 #if WASM_ENABLE_LIBC_WASI == 0
 bool
 os_is_handle_valid(os_file_handle *handle)
@@ -95,20 +100,20 @@ os_is_handle_valid(os_file_handle *handle)
 /* implemented in posix_file.c */
 #endif
 
-void* os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
+void *
+os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
 {
     // Was uint64_t
     size_t aligned_size, page_size;
-    void* ret = NULL;
+    void *ret = NULL;
 
-    //NOTE(Friedrich) Dit is een zelfgeschreven functie, maar zwaar geinspireerd van SGX
+    // NOTE(Friedrich) Taken from Intel SGX
     if (os_is_handle_valid(&file)) {
         os_printf("os_mmap(size=%u, prot=0x%x, file=%x) failed: file is not "
                   "supported.\n",
                   size, prot, file);
         return NULL;
     }
-
 
     page_size = PAGE_SIZE;
     aligned_size = (size + page_size - 1) & ~(page_size - 1);
@@ -123,51 +128,57 @@ void* os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
         return NULL;
     }
     else {
-        DMSG("os_mmap(addr=%p, size=%lu, aligned size=%lu, prot=0x%x) memory allocated.",
-                  ret, size, aligned_size, prot);
+        DMSG("os_mmap(addr=%p, size=%lu, aligned size=%lu, prot=0x%x) memory "
+             "allocated.",
+             ret, size, aligned_size, prot);
     }
 
 #ifdef FRIEDRICH_DEBUG
     os_printf("TZ_PLATFORM os_mmap CALLED");
 #endif
     if (os_mprotect(ret, aligned_size, prot) != 0) {
-        os_printf("os_mmap(size=%lu, prot=0x%x) failed to set protect.",
-                  size, prot);
+        os_printf("os_mmap(size=%lu, prot=0x%x) failed to set protect.", size,
+                  prot);
         tee_unmap(ret, aligned_size);
         return NULL;
     }
     else {
-        DMSG("os_mmap(addr=%p, size=%lu, aligned size=%lu, prot=0x%x) protection set.",
-                  ret, size, aligned_size, prot);
+        DMSG("os_mmap(addr=%p, size=%lu, aligned size=%lu, prot=0x%x) "
+             "protection set.",
+             ret, size, aligned_size, prot);
     }
 
     return ret;
 }
 
-void os_munmap(void *addr, size_t size)
+void
+os_munmap(void *addr, size_t size)
 {
-    //NOTE(Friedrich) Ik heb dit eens naar size_t veranderd
+    // NOTE(Friedrich) Ik heb dit eens naar size_t veranderd
     uint64_t aligned_size, page_size;
     TEE_Result res;
 
     page_size = PAGE_SIZE;
     aligned_size = (size + page_size - 1) & ~(page_size - 1);
-    
+
     res = tee_unmap(addr, aligned_size);
     if (res != TEE_SUCCESS) {
-        os_printf("os_munmap(addr=%p, size=%lu, aligned size=%lu) error while unmapping the memory: %u.",
+        os_printf("os_munmap(addr=%p, size=%lu, aligned size=%lu) error while "
+                  "unmapping the memory: %u.",
                   addr, size, aligned_size, res);
-    } else {
-        DMSG("os_munmap(addr=%p, size=%lu, aligned size=%lu) OK.",
-                  addr, size, aligned_size);
+    }
+    else {
+        DMSG("os_munmap(addr=%p, size=%lu, aligned size=%lu) OK.", addr, size,
+             aligned_size);
     }
 }
 
-int os_mprotect(void *addr, size_t size, int prot)
+int
+os_mprotect(void *addr, size_t size, int prot)
 {
     int mprot = 0;
     TEE_Result res;
-    
+
     if (prot & MMAP_PROT_READ)
         mprot |= TEE_MATTR_UR | TEE_MATTR_PR;
     if (prot & MMAP_PROT_WRITE)
@@ -176,15 +187,15 @@ int os_mprotect(void *addr, size_t size, int prot)
         mprot |= TEE_MATTR_UX | TEE_MATTR_PX;
 
     res = tee_mprotect(addr, size, mprot);
-    if(res != TEE_SUCCESS) {
-        os_printf("os_mprotect(addr=%p, size=%zu, prot=%u) failed: %u.",
-                addr, size, prot, res);
-    } else {
-        DMSG("os_mprotect(addr=%p, size=%lu, prot=%u) OK.",
-                addr, size, prot);
+    if (res != TEE_SUCCESS) {
+        os_printf("os_mprotect(addr=%p, size=%zu, prot=%u) failed: %u.", addr,
+                  size, prot, res);
+    }
+    else {
+        DMSG("os_mprotect(addr=%p, size=%lu, prot=%u) OK.", addr, size, prot);
     }
 
-    return (res == TEE_SUCCESS? 0:-1);
+    return (res == TEE_SUCCESS ? 0 : -1);
 }
 
 void
@@ -192,24 +203,28 @@ os_dcache_flush(void)
 {
 }
 
-float strtof(const char* str, char** endptr)
+float
+strtof(const char *str, char **endptr)
 {
     EMSG("strtof is not supported.");
     return 0;
 }
 
-long int strtol(const char *str, char **endptr, int base)
+long int
+strtol(const char *str, char **endptr, int base)
 {
     return strtoul(str, endptr, base);
 }
 
-double strtod(const char* str, char** endptr)
+double
+strtod(const char *str, char **endptr)
 {
     EMSG("strtod is not supported.");
     return 0;
 }
 
-unsigned long long int strtoull(const char* str, char** endptr, int base)
+unsigned long long int
+strtoull(const char *str, char **endptr, int base)
 {
     EMSG("strtoull is not supported.");
     return 0;
@@ -223,14 +238,15 @@ unsigned long long int strtoull(const char* str, char** endptr, int base)
 // }
 // #endif
 
-//NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms een -1
+// NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms een -1
 int
 os_dumps_proc_mem_info(char *out, unsigned int size)
 {
     return -1;
 }
 
-//NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms zo
+// NOTE(Friedrich) Zelfgeschreven functie, is bij alle platforms zo
 void
 os_icache_flush(void *start, size_t len)
-{}
+{
+}

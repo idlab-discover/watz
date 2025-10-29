@@ -4,7 +4,7 @@
 set (PLATFORM_SHARED_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # add_definitions(-D)
-add_compile_definitions(BH_PLATFORM_LINUX_TRUSTZONE FRIEDRICH_BASE)
+add_compile_definitions(BH_PLATFORM_LINUX_TRUSTZONE)
 
 include_directories(${PLATFORM_SHARED_DIR})
 include_directories(${PLATFORM_SHARED_DIR}/../include)
@@ -12,7 +12,7 @@ include_directories(${PLATFORM_SHARED_DIR}/../include)
 include (${CMAKE_CURRENT_LIST_DIR}/../common/math/platform_api_math.cmake)
 
 if ("$ENV{OPTEE_DIR}" STREQUAL "")
-  set (OPTEE_DIR " /home/zelzahn/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee")
+  set (OPTEE_DIR " ~/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee")
 else()
   set (OPTEE_DIR $ENV{OPTEE_DIR})
 endif()

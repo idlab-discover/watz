@@ -33,7 +33,7 @@ utils_print_byte_array(uint8_t *byte_array, int byte_array_len)
 void
 TA_SetOutputBuffer(void *output_buffer, uint64_t output_buffer_size)
 {
-    vedliot_set_output_buffer(output_buffer, output_buffer_size);
+    watz_set_output_buffer(output_buffer, output_buffer_size);
 }
 
 TEE_Result
@@ -41,8 +41,8 @@ TA_HashWasmBytecode(wamr_context *ctx)
 {
     TEE_Result res = TEE_SUCCESS;
     TEE_OperationHandle operation_handle = TEE_HANDLE_NULL;
-    uint32_t expected_digest_len = RA_HASH_SIZE / 8;
-    uint32_t digest_len = RA_HASH_SIZE;
+    uint32_t expected_digest_len = 256 / 8;
+    uint32_t digest_len = 256;
 
     res = TEE_AllocateOperation(&operation_handle, TEE_ALG_SHA256,
                                 TEE_MODE_DIGEST, 0);
@@ -83,12 +83,12 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
 {
     char error_buf[128];
     /* NOTE(Friedrich)
-     Geen idee hoe groot deze moeten zijn, eerste lijn is hoe het oorspronkelijk was in WaTZ.
+     Geen idee hoe groot deze moeten zijn, eerste lijn is hoe het oorspronkelijk
+     was in WaTZ.
     */
-    // uint32_t stack_size = 256 * 1024, heap_size = 8096;
-    // uint32_t stack_size = 256 * 1024;
-    uint32_t stack_size = 8092;
-    uint32_t heap_size = 8092;
+    uint32_t stack_size = 256 * 1024, heap_size = 8096;
+    // uint32_t stack_size = 8092;
+    // uint32_t heap_size = 8092;
 
     RuntimeInitArgs init_args;
     TEE_MemFill(&init_args, 0, sizeof(RuntimeInitArgs));
@@ -101,7 +101,7 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     EMSG("global heap buf size: %ld\n", context->heap_size);
 #endif
 
-    /* configure the native functions being exported to WASM app */    
+    /* configure the native functions being exported to WASM app */
     init_args.native_module_name = "env";
     init_args.n_native_symbols =
         context->native_symbols_size / sizeof(NativeSymbol);
@@ -131,8 +131,8 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_LOAD));
 #endif
 
-    // NOTE(Friedrich) In het geval van `latencies` is dit het aantal keer dat
-    // het moet uitvoeren
+    // NOTE(Friedrich) For example for `latencies` this is the times it needs to
+    // be executed
     /* pass arguments to module */
     wasm_runtime_set_wasi_args(context->module, NULL, 0, NULL, 0, NULL, 0, argv,
                                argc);

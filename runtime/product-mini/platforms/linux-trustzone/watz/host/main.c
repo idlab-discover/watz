@@ -183,15 +183,22 @@ main(int argc, char *argv[])
     char *wasm_path = argv[2];
     char *arg = argc > 3 ? argv[3] : NULL;
 
+#ifdef FRIEDRICH_DEBUG
     printf("ALLOCATE BUFFERS\n");
+#endif
     allocate_buffers(&ctx, 5 * 1024);
+#ifdef FRIEDRICH_DEBUG
     printf("Buffers allocated\n");
+#endif
 
     prepare_tee_session(&ctx);
+#ifdef FRIEDRICH_DEBUG
     printf("Tee session prepared\n");
-
+#endif
     configure_heap_size(&ctx, heap_size);
+#ifdef FRIEDRICH_DEBUG
     printf("Heap size connfigured\n");
+#endif
 
     success = start_wasm(&ctx, wasm_path, arg);
 

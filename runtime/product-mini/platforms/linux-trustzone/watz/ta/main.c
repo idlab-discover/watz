@@ -7,8 +7,6 @@
 #include <wasm.h>
 
 #include "logging.h"
-#include "ra_wasi.h"
-#include "remote_attestation.h"
 #include "tee_benchmarks.h"
 
 static uint32_t heap_size;
@@ -98,8 +96,6 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     TEE_Result result;
     wamr_context context = { .heap_buf = global_heap_buf,
                              .heap_size = heap_size,
-                             .native_symbols = wasi_ra_native_symbols,
-                             .native_symbols_size = wasi_ra_native_symbols_size,
                              .wasm_bytecode = trusted_wasm_bytecode,
                              .wasm_bytecode_size = wasm_bytecode_size };
 

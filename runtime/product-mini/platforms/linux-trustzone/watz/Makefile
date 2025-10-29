@@ -32,8 +32,8 @@ rootfs: all_wamr
 	@mkdir -p $(OUTPUT_DIR)
 	@mkdir -p $(OUTPUT_DIR)/ta
 	@mkdir -p $(OUTPUT_DIR)/ca
-	@if [ -e host/vedliot_verifier ]; then \
-		cp -p host/vedliot_verifier $(OUTPUT_DIR)/ca/; \
+	@if [ -e host/watz ]; then \
+		cp -p host/watz $(OUTPUT_DIR)/ca/; \
 	fi;
 	@cp -pr ta/*.ta $(OUTPUT_DIR)/ta/; \
 

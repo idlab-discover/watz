@@ -17,7 +17,7 @@ CFLAGS += -O3 -Wall -I../ta/include -I$(TEEC_EXPORT)/include -I./include $(PROFI
 # Add/link other required libraries here
 LDADD += -lteec -Wl,-L$(TEEC_EXPORT)/lib
 
-BINARY = vedliot_attester
+BINARY = watz
 
 .PHONY: all
 all: $(BINARY)

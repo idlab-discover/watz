@@ -5,13 +5,13 @@ cmake_minimum_required (VERSION 3.14)
 
 project (iwasm)
 
-SET(CMAKE_C_COMPILER /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-gcc)
-SET(CMAKE_CXX_COMPILER /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-g++)
+SET(CMAKE_C_COMPILER ${CROSS_COMPILE}gcc)
+SET(CMAKE_CXX_COMPILER ${CROSS_COMPILE}g++)
 
 set (WAMR_BUILD_TARGET "AARCH64")
 set (WAMR_BUILD_PLATFORM "linux-trustzone")
 
-# FRIEDRICH
+# NOTE(FRIEDRICH)
 set(WAMR_BUILD_BULK_MEMORY 1)
 
 # Reset default linker flags
@@ -82,9 +82,6 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -ffunction-sections -fdata-secti
                                      -fvisibility=hidden -fpie")
 
 set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
-
-# NOTE(Friedrich) Do not enable this: WASM_ENABLE_APP_FRAMEWORK=1 
-# add_compile_definitions(WASM_ENABLE_LIBC_WASI=1)
 
 include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
 add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
