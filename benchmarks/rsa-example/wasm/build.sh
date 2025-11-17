@@ -7,7 +7,7 @@ buildaotcompiler
 buildwatz $((2 * 1024 * 1024)) $((2 * 1024 * 1024))
 buildwamr
 
-announcebuild "hello_world-wasm"
+announcebuild "rsa_example-wasm"
 mkdir -p $SCRIPT_DIR/out
 cd $SCRIPT_DIR/out
 
@@ -19,6 +19,6 @@ cd $SCRIPT_DIR/out
   -Wl,--export=Host_GenerateKey \
   -Wl,--export=Host_Encrypt \
   -Wl,--allow-undefined \
-  -o hello_world.wasm ../app/main.c
+  -o rsa_example.wasm ../app/main.c
 
-compileaot $SCRIPT_DIR/out/hello_world
+compileaot $SCRIPT_DIR/out/rsa_example
