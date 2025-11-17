@@ -97,9 +97,6 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     init_args.mem_alloc_type = Alloc_With_Pool;
     init_args.mem_alloc_option.pool.heap_buf = context->heap_buf;
     init_args.mem_alloc_option.pool.heap_size = context->heap_size;
-#ifdef FRIEDRICH_DEBUG
-    EMSG("global heap buf size: %ld\n", context->heap_size);
-#endif
 
     /* configure the native functions being exported to WASM app */
     init_args.native_module_name = "env";
@@ -138,14 +135,18 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
                                argc);
 
     /* instantiate the module */
+#ifdef FRIEDRICH_DEBUG
     EMSG("INSTANTIATED STARTED");
+#endif
     if (!(context->module_inst =
               wasm_runtime_instantiate(context->module, stack_size, heap_size,
                                        error_buf, sizeof(error_buf)))) {
         EMSG("Instantiate wasm module failed. error: %s\n", error_buf);
         return TEE_ERROR_GENERIC;
     }
+#ifdef FRIEDRICH_DEBUG
     EMSG("INSTANTIATED ENDED");
+#endif
 
 #ifdef PROFILING_LAUNCH_TIME
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_INSTANTIATE));

@@ -1,5 +1,6 @@
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
+#include <string.h>
 
 #include "wasm_export.h"
 
@@ -10,6 +11,126 @@
 #include "tee_benchmarks.h"
 
 static uint32_t heap_size;
+
+#ifdef FRIEDRICH_OPENSSL
+TEE_Result
+Host_GenerateKey(wasm_exec_env_t exec_env, uintptr_t *key, uint32_t key_size)
+{
+    TEE_Result res = TEE_ERROR_GENERIC;
+    TEE_ObjectHandle local_key = TEE_HANDLE_NULL;
+    const uint32_t key_type = TEE_TYPE_RSA_KEYPAIR;
+
+    res = TEE_AllocateTransientObject(key_type, key_size, &local_key);
+    if (res) {
+        EMSG("TEE_AllocateTransientObject(%#" PRIx32 ", %" PRId32
+             "): %#" PRIx32,
+             key_type, key_size, res);
+        return res;
+    }
+
+    res = TEE_GenerateKey(local_key, key_size, NULL, 0);
+    if (res) {
+        EMSG("TEE_GenerateKey(%" PRId32 "): %#" PRIx32, key_size, res);
+        TEE_FreeTransientObject(local_key);
+        return res;
+    }
+    // TEE_FreeTransientObject(key);
+    *key = (uintptr_t)local_key;
+
+    return TEE_SUCCESS;
+}
+
+TEE_Result
+Host_Encrypt(wasm_exec_env_t exec_env, uintptr_t key, char *src, void *destData,
+             uint32_t destLen, uint32_t *requestedLen,
+             uint32_t requestedLenSize)
+{
+    TEE_Result res = TEE_ERROR_GENERIC;
+    TEE_OperationHandle op = TEE_HANDLE_NULL;
+    TEE_ObjectInfo key_info = {};
+    const uint32_t alg = TEE_ALG_RSAES_PKCS1_V1_5;
+    TEE_ObjectHandle local_key = (TEE_ObjectHandle)key;
+
+    if (!local_key)
+        return TEE_ERROR_BAD_STATE;
+
+    res = TEE_GetObjectInfo1(local_key, &key_info);
+    if (res) {
+        EMSG("TEE_GetObjectInfo1: %#" PRIx32, res);
+        return res;
+    }
+
+    res = TEE_AllocateOperation(&op, alg, TEE_MODE_ENCRYPT, key_info.keySize);
+    if (res) {
+        EMSG("TEE_AllocateOperation(TEE_MODE_ENCRYPT, %#" PRIx32 ", %" PRId32
+             "): %#" PRIx32,
+             alg, key_info.keySize, res);
+        return res;
+    }
+
+    res = TEE_SetOperationKey(op, local_key);
+    if (res) {
+        EMSG("TEE_SetOperationKey: %#" PRIx32, res);
+        goto out;
+    }
+
+    res = TEE_AsymmetricEncrypt(op, NULL, 0, src, strlen(src), destData,
+                                requestedLen);
+    if (res) {
+        EMSG("TEE_AsymmetricEncrypt(%" PRId32 ", %" PRId32 "): %#" PRIx32,
+             (uint32_t)strlen(src), *requestedLen, res);
+    }
+
+out:
+    TEE_FreeOperation(op);
+    return res;
+}
+
+TEE_Result
+Host_Decrypt(wasm_exec_env_t exec_env, uintptr_t key, void *src,
+             uint32_t srcLen, void *dest, uint32_t destLen,
+             uint32_t *requestedLen, uint32_t requestedLenSize)
+{
+    TEE_Result res = TEE_ERROR_GENERIC;
+    TEE_OperationHandle op = TEE_HANDLE_NULL;
+    TEE_ObjectInfo key_info = {};
+    const uint32_t alg = TEE_ALG_RSAES_PKCS1_V1_5;
+    TEE_ObjectHandle local_key = (TEE_ObjectHandle)key;
+
+    if (!local_key)
+        return TEE_ERROR_BAD_STATE;
+
+    res = TEE_GetObjectInfo1(local_key, &key_info);
+    if (res) {
+        EMSG("TEE_GetObjectInfo1: %#" PRIx32, res);
+        return res;
+    }
+
+    res = TEE_AllocateOperation(&op, alg, TEE_MODE_DECRYPT, key_info.keySize);
+    if (res) {
+        EMSG("TEE_AllocateOperation(TEE_MODE_DECRYPT, %#" PRIx32 ", %" PRId32
+             "): %#" PRIx32,
+             alg, key_info.keySize, res);
+        return res;
+    }
+
+    res = TEE_SetOperationKey(op, local_key);
+    if (res) {
+        EMSG("TEE_SetOperationKey: %#" PRIx32, res);
+        goto out;
+    }
+
+    res = TEE_AsymmetricDecrypt(op, NULL, 0, src, srcLen, dest, requestedLen);
+    if (res) {
+        EMSG("TEE_AsymmetricDecrypt(%" PRId32 ", %" PRId32 "): %#" PRIx32,
+             srcLen, *requestedLen, res);
+    }
+
+out:
+    TEE_FreeOperation(op);
+    return res;
+}
+#endif
 
 TEE_Result
 TA_CreateEntryPoint(void)
@@ -92,10 +213,23 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     // Set the output buffer to gather the stdout once the application ended
     TA_SetOutputBuffer(output_buffer, output_buffer_size);
 
+#ifdef FRIEDRICH_OPENSSL
+    // Define native functions that the Wasm app can call
+    static NativeSymbol native_symbols[] = {
+        EXPORT_WASM_API_WITH_SIG(Host_GenerateKey, "(*~)i"),
+        EXPORT_WASM_API_WITH_SIG(Host_Encrypt, "(i$*~*~)i"),
+        EXPORT_WASM_API_WITH_SIG(Host_Decrypt, "(i*~*~*~)i")
+    };
+#endif
+
     // General settings for the runtime
     TEE_Result result;
     wamr_context context = { .heap_buf = global_heap_buf,
                              .heap_size = heap_size,
+#ifdef FRIEDRICH_OPENSSL
+                             .native_symbols = native_symbols,
+                             .native_symbols_size = sizeof(native_symbols),
+#endif
                              .wasm_bytecode = trusted_wasm_bytecode,
                              .wasm_bytecode_size = wasm_bytecode_size };
 
