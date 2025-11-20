@@ -17,8 +17,14 @@ int Host_Decrypt(uintptr_t key, void *src, uint32_t srcLen, void *dest,
                  uint32_t destLen, uint32_t *requestedLen,
                  uint32_t requestedLenSize);
 
-int main() {
-  char *data = "Hello world from inside WAMR on Arm TrustZone!";
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    printf("usage: payload\n");
+    return 1;
+  }
+
+  char *data = argv[1];
+
   printf("The payload to encrypt is: %s\n", data);
 
   uint32_t key_size = 512;
