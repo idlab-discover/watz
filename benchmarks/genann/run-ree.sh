@@ -14,6 +14,6 @@ for size in {100..1000..100}
 do
     for iterations in {1..20}
     do
-        echo "$size,$(sshpass -p "$BM_BOARD_USER" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size --stack-size=$wasm_stack_size --dir=. genann/bm_genann_ree.aot $size 2>&1")" | tee -a $LOGS_DIR/genann/ree.csv
+        echo "$size,$(sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size --stack-size=$wasm_stack_size --dir=. genann/bm_genann_ree.aot $size 2>&1")" | tee -a $LOGS_DIR/genann/ree.csv
     done
 done

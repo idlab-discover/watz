@@ -7,7 +7,7 @@ mkdir -p $LOGS_DIR/speedtest1
 
 announcerun "SQLite (native TEE)"
 
-for iterations in {1..50}
+for iterations in {1..100}
 do
     sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME '/root/bm_speedtest1_native_tee 2>&1' | tee -a $LOGS_DIR/speedtest1/tee-native.csv
 done

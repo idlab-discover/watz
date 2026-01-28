@@ -1,7 +1,8 @@
 #!/bin/bash
 
-SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 source $SCRIPT_DIR/../common.sh
 
+buildwamr
 buildaotcompiler
-buildwatz $((23 * 1024 * 1024)) $((2 * 1024 * 1024)) PROFILING=LAUNCH_TIME
+buildwatz $((30 * 1024 * 1024)) $((2 * 1024 * 1024)) PROFILING=LAUNCH_TIME

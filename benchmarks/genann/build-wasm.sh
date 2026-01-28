@@ -3,10 +3,10 @@
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/../common.sh
 
-announcebuild "Genann/REE (WASM)"
 mkdir -p $SCRIPT_DIR/out
 cd $SCRIPT_DIR/out
 
+announcebuild "Genann/REE (WASM)"
 /opt/wasi-sdk/bin/clang $BM_CFLAGS \
     --target=wasm32-wasi \
     --sysroot=/opt/wasi-sdk/share/wasi-sysroot/ \

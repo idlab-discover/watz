@@ -11,7 +11,8 @@ source $SCRIPT_DIR/../common.sh
 
 OUT_DIR=$SCRIPT_DIR/out
 WAMRC_CMD=$WATZ_RUNTIME_DIR/wamr-compiler/build/wamrc
-POLYBENCH_CASES="datamining linear-algebra medley stencils"
+# POLYBENCH_CASES="datamining linear-algebra medley stencils"
+POLYBENCH_CASES="medley"
 
 announcebuild "polybench (WASM)"
 
@@ -37,6 +38,7 @@ for case in $POLYBENCH_CASES; do
     /home/zelzahn/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-gcc -O3 -I utilities -I ${file%/*} utilities/polybench.c ${file} \
       -DPOLYBENCH_TIME -lm -o ${OUT_DIR}/${file_name%.*}_native
 
+      # -Wl,--max-memory=22020096 \
     announce "Build ${file_name%.*}.wasm"
     /opt/wasi-sdk/bin/clang $BM_CFLAGS -I utilities -I ${file%/*} \
       utilities/polybench.c ${file} \

@@ -1,0 +1,45 @@
+E/TC:?? 00 
+E/TC:?? 00 User mode data-abort at address 0x0 (translation fault)
+E/TC:?? 00  esr 0x92000045  ttbr0 0x800103c294800   ttbr1 0x00000000   cidr 0x0
+E/TC:?? 00  cpu #7          cpsr 0x20000100
+E/TC:?? 00  x0  0000000000000000 x1  0000000000000000
+E/TC:?? 00  x2  0000000000000160 x3  0000000000000000
+E/TC:?? 00  x4  00000000400d8378 x5  0000000000000000
+E/TC:?? 00  x6  ffffffffffffffff x7  0000000040016d80
+E/TC:?? 00  x8  0000000000000001 x9  0000000040016d80
+E/TC:?? 00  x10 0000000000000000 x11 0000000000000000
+E/TC:?? 00  x12 0000000000000000 x13 0000000040016be2
+E/TC:?? 00  x14 0000000000000000 x15 0000000000000000
+E/TC:?? 00  x16 000000103c0ae758 x17 0000000000000000
+E/TC:?? 00  x18 0000000000000000 x19 0000000000000000
+E/TC:?? 00  x20 00000000009ffe98 x21 0000000000000164
+E/TC:?? 00  x22 0000000040017218 x23 0000000000000002
+E/TC:?? 00  x24 0000000000000000 x25 00000000400d8000
+E/TC:?? 00  x26 000000004001cd43 x27 00000000402ee000
+E/TC:?? 00  x28 000000004001a2a0 x29 0000000040016f50
+E/TC:?? 00  x30 1f378fc0400aa2d0 elr 00000000400c3e48
+E/TC:?? 00  sp_el0 0000000040016f50
+E/LD:   Status of TA bc20728a-6a28-49d8-98d8-f22e7535f137
+E/LD:    arch: aarch64
+E/LD:   region  0: va 0x40005000 pa 0x103cc8d000 size 0x002000 flags rw-s (ldelf)
+E/LD:   region  1: va 0x40007000 pa 0x103cc8f000 size 0x009000 flags r-xs (ldelf)
+E/LD:   region  2: va 0x40010000 pa 0x103cc98000 size 0x001000 flags rw-s (ldelf)
+E/LD:   region  3: va 0x40011000 pa 0x103cc99000 size 0x004000 flags rw-s (ldelf)
+E/LD:   region  4: va 0x40015000 pa 0x103cc9d000 size 0x001000 flags r--s
+E/LD:   region  5: va 0x40016000 pa 0x103cf28000 size 0x002000 flags rw-s (stack)
+E/LD:   region  6: va 0x40018000 pa 0x1591c46b0 size 0x002000 flags rw-- (param)
+E/LD:   region  7: va 0x4001a000 pa 0x15718f2a0 size 0x002000 flags rw-- (param)
+E/LD:   region  8: va 0x4001c000 pa 0x1590b1d43 size 0x001000 flags rw-- (param)
+E/LD:   region  9: va 0x4001d000 pa 0x1591bacb0 size 0x00c000 flags rw-- (param)
+E/LD:   region 10: va 0x40065000 pa 0x00001000 size 0x083000 flags r-xs [0]
+E/LD:   region 11: va 0x400e8000 pa 0x00084000 size 0x207000 flags rw-s [0]
+E/LD:    [0] bc20728a-6a28-49d8-98d8-f22e7535f137 @ 0x40065000
+E/LD:   Call stack:
+E/LD:    0x400c3e48
+E/LD:    0x40068d64
+E/LD:    0x4006cc0c
+E/LD:    0x4006531c
+E/LD:    0x40065ca4
+E/LD:    0x400b9b90
+E/LD:    0x400b9960
+E/LD:    0x40065d7c

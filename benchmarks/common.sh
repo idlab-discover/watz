@@ -1,38 +1,47 @@
 #!/bin/bash
 
 # USER SETTINGS
-BM_BOARD_HOSTNAME="localhost"
+# BM_BOARD_HOSTNAME="localhost"
+# BM_BOARD_HOSTNAME="192.168.0.116"
+BM_BOARD_HOSTNAME="10.10.130.16"
 BM_BOARD_USER="root"
-BM_BOARD_PASS="root"
-BM_SSH_PORT=2222
+# TARGET="QEMU"
+TARGET="JETSON"
 
 # exit when any command fails
 set -e
 
 # Common settings
-TA_LOG_LEVEL=2
+TA_LOG_LEVEL=4
 
 # define common paths
 BM_CFLAGS="-O3"
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-# OPTEE_DIR=/opt/watz
-# OPTEE_OS_DIR=$OPTEE_DIR/optee_os
 # OPTEE_TOOLCHAINS_DIR=$OPTEE_DIR/toolchains
 # OPTEE_BR_OUT_DIR=$OPTEE_DIR/out-br
-WATZ_RUNTIME_DIR=$ROOT_DIR/../runtime
-OPTEE_DIR=$ROOT_DIR/../../
+# WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2.x
+WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2.4.1
+# WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/1.3.3
+# OPTEE_DIR=$ROOT_DIR/../..
 BM_BUILDER_PATH="$ROOT_DIR"
 # WATZ_RUNTIME_DIR=~/Downloads/unine-watz/runtime/
 DIST_DIR=$ROOT_DIR/dist
 LOGS_DIR=$ROOT_DIR/logs
-TARGET="QEMU"
 # define variables
 
 if [ "$TARGET" == "JETSON" ]; then
+  BM_SSH_PORT=22
+  BM_BOARD_PASS="orin"
+
+  OPTEE_DIR=/home/zelzahn/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/
   CROSS_COMPILE=~/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-
   TEEC_EXPORT=~/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/install/t234/usr
   TA_DEV_KIT_DIR=/home/zelzahn/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/build/t234/export-ta_arm64
 elif [ "$TARGET" == "QEMU" ]; then
+  BM_SSH_PORT=2222
+  BM_BOARD_PASS="root"
+
+  OPTEE_DIR=$ROOT_DIR/../../
   CROSS_COMPILE=$OPTEE_DIR/toolchains/aarch64/bin/aarch64-linux-gnu-
   TEEC_EXPORT=$OPTEE_DIR/out-br/host/aarch64-buildroot-linux-gnu/sysroot/usr
   TA_DEV_KIT_DIR=$OPTEE_DIR/optee_os/out/arm/export-ta_arm64
@@ -59,6 +68,10 @@ safesleep() {
   sleep 2
 }
 
+mib() {
+  echo $((1024*1024))
+}
+
 # Define the functions to build and deploy WaTZ (for TEE)
 # Prototype: buildwatz <attester_data_size> <verifier_data_size> [make param1]
 buildwatz() {
@@ -81,7 +94,7 @@ deploywatz() {
   announcedeploy "WaTZ"
   mkdir -p $ROOT_DIR/build
   mkdir -p out/
-  OUT_PATH=$BM_BUILDER_PATH/../runtime/product-mini/platforms/linux-trustzone/watz/out
+  OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux-trustzone/watz/out
   if [ "$TARGET" == "JETSON" ]; then
     sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ca/watz $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin
     sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ta/bc20728a-6a28-49d8-98d8-f22e7535f137.ta $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/lib/optee_armtz
@@ -100,7 +113,7 @@ buildwamr() {
   cd $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
   # NOTE(Friedrich) For `runtime-old`
   # cp ../CMakeLists-aarch64.txt ../CMakeLists.txt
-  cmake .. -G Ninja
+  cmake .. -G Ninja -DWAMR_BUILD_TARGET=AARCH64
   ninja clean
   ninja
   # rm ../CMakeLists.txt
@@ -110,9 +123,9 @@ deploywamr() {
   announcedeploy "WAMR runtime"
   mkdir -p $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
   cd $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
-  OUT_PATH=$BM_BUILDER_PATH/../runtime/product-mini/platforms/linux/build/iwasm-2.4.1
+  OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm-2.4.1
   # NOTE(Friedrich) For `wasi-sdk/12`
-  # OUT_PATH=$BM_BUILDER_PATH/../runtime/product-mini/platforms/linux/build/iwasm
+  # OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm
   if [ "$TARGET" == "JETSON" ]; then
     sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin/iwasm
   elif [ "$TARGET" == "QEMU" ]; then

@@ -17,18 +17,18 @@ wasm_stack_size=$((512 * 1024))
 launch_verifier () {
     size_of_dataset=$1
 
-    sshpass -p $BM_BOARD_USER ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_verifier $size_of_dataset 2>> /root/genann-error-verifier.log" | tee -a $LOGS_DIR/genann/verifier.csv
+    sshpass -p $BM_BOARD_PASS ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_verifier $size_of_dataset 2>> /root/genann-error-verifier.log" | tee -a $LOGS_DIR/genann/verifier.csv
 }
 
 for size in {100..1000..100}
 do
     for iterations in {1..20}
     do
-        restart_tee_supplicant
+        # restart_tee_supplicant
 
-        launch_verifier $size &
-        safesleep
-        echo "$size,$(sshpass -p "$BM_BOARD_USER" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_attester $wasm_heap_size genann/bm_genann_tee.aot 2>&1")" | tee -a $LOGS_DIR/genann/tee.csv
-        safesleep
+        # launch_verifier $size &
+        # safesleep
+        echo "$size,$(sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "vedliot_attester $wasm_heap_size genann/bm_genann_tee.aot /root/gennan/iris-$size.data 2>&1")" | tee -a $LOGS_DIR/genann/tee.csv
+        # safesleep
     done
 done

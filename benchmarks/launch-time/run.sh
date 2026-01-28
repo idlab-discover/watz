@@ -11,7 +11,7 @@ announcerun "launch-time"
 mkdir -p $LOGS_DIR/launch-time/
 rm -f $LOGS_DIR/launch-time/general.csv
 
-for size in {1..9}; do
+for size in {4..9}; do
   for iterations in {1..100}; do
     wasm_heap_size=$((($size + 4) * 1024 * 1024))
 

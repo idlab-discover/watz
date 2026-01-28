@@ -11,5 +11,6 @@ wasm_stack_size=$((512 * 1024))
 announcerun "SQLite (Wasm REE)"
 
 for iterations in {1..50}; do
-  sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size --stack-size=$wasm_stack_size bm_speedtest1.aot 2>&1" | tee -a $LOGS_DIR/speedtest1/ree-wasm.csv
+  # sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --global-heap-size=$wasm_heap_size --stack-size=$wasm_stack_size bm_speedtest1.aot 2>&1" | tee -a $LOGS_DIR/speedtest1/ree-wasm.csv
+  sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME "iwasm --heap-size=$wasm_heap_size --stack-size=$wasm_stack_size bm_speedtest1.aot 2>&1" | tee -a $LOGS_DIR/speedtest1/ree-wasm.csv
 done

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 // BSD headers
 #include <err.h>
@@ -59,6 +60,7 @@ static void run_speedtest1(tee_context *tee) {
     op.params[0].tmpref.buffer = benchmark_buffer;
 	op.params[0].tmpref.size = BENCHMARK_BUFFER_SIZE;
     
+    // res = TEEC_InvokeCommand(&tee->session, TA_COMMAND_HELLO, &op, &err_origin);
     res = TEEC_InvokeCommand(&tee->session, TA_COMMAND_RUN_SPEEDTEST1, &op, &err_origin);
     
     if (res != TEEC_SUCCESS) {
@@ -81,5 +83,5 @@ int main(int argc, char *argv[]) {
     close_session(&tee);
     finalize_context(&tee);
 
-    return EXIT_SUCCESS;
+    return 0;
 }

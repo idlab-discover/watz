@@ -142,9 +142,20 @@ void import_data_ree(char* raw_data, unsigned int data_size, int dataset_size) {
     printf("%lld,", timespec_to_micro(importfile));
 }
 
-void import_data_tee(char* raw_data, unsigned int data_size) {
-    /* Remotely attest this app and get the dataset from there. */
-    remote_attestation(raw_data, data_size);
+void import_data_tee(char* raw_data, unsigned int data_size, char* filename) {
+    BENCHMARK_START(importfile);
+
+	FILE *f = fopen(filename, "r");
+    if (f == NULL) {
+        printf("Could not open file: %s\n", filename);
+        exit(1);
+    }
+
+    fgets((char*) raw_data, data_size, f);
+    fclose(f);
+
+    BENCHMARK_STOP(importfile);
+    printf("%lld,", timespec_to_micro(importfile));
 }
 
 void load_data(char* raw_data, unsigned int data_size) {
@@ -205,15 +216,15 @@ int main(int argc, char *argv[])
     char *iris_data = malloc(IRIS_DATA_SIZE);
 
     /* Import the data into the buffer. */
-#ifdef TEE
-    import_data_tee(iris_data, IRIS_DATA_SIZE);
-#endif
-#ifdef REE
     if (argc != 2) {
         printf("Error: the dataset size is expected as an argument.\n");
         exit(1);
     }
 
+#ifdef TEE
+    import_data_tee(iris_data, IRIS_DATA_SIZE, argv[1]);
+#endif
+#ifdef REE
     import_data_ree(iris_data, IRIS_DATA_SIZE, atoi(argv[1]));
 #endif
     

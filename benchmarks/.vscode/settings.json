@@ -1,0 +1,17 @@
+{
+    "cmake.sourceDirectory": "/opt/watz/benchmarks/latencies/native",
+    "files.associations": {
+        "cstdint": "c",
+        "charconv": "c",
+        "ratio": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "istream": "c",
+        "ostream": "c",
+        "variant": "c",
+        "chrono": "c"
+    }
+}

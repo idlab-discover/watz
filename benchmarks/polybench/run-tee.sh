@@ -6,7 +6,7 @@ source $SCRIPT_DIR/../common.sh
 mkdir -p $LOGS_DIR/polybench/
 
 wasm_heap_size=$((10 * 1024 * 1024))
-polybench_files=$SCRIPT_DIR/out/wasm/*.aot
+polybench_files=$SCRIPT_DIR/out/*.aot
 
 
 for file in $polybench_files
