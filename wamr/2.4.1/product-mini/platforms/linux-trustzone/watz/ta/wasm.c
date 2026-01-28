@@ -89,7 +89,7 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     // uint32_t stack_size = 256 * 1024, heap_size = 35 * 64 * 1024;
     // uint32_t stack_size = 256 * 1024, heap_size = 8 * 1024 * 1024;
     uint32_t stack_size = 8092;
-    uint32_t heap_size = 8092;
+    uint32_t heap_size = context->initial_linear_memory_size;
 
     RuntimeInitArgs init_args;
     TEE_MemFill(&init_args, 0, sizeof(RuntimeInitArgs));

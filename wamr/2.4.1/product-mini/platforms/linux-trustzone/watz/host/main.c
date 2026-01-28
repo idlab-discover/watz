@@ -64,6 +64,24 @@ configure_heap_size(tee_ctx *ctx, uint32_t size)
 }
 
 static void
+configure_linear_memory(tee_ctx *ctx, uint32_t size)
+{
+    TEEC_Operation op;
+    uint32_t origin;
+    TEEC_Result res;
+
+    memset(&op, 0, sizeof(op));
+    op.paramTypes =
+        TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, TEEC_NONE, TEEC_NONE, TEEC_NONE);
+    op.params[0].value.a = size;
+
+    res = TEEC_InvokeCommand(&ctx->sess, COMMAND_CONFIGURE_LINEAR_MEMORY, &op, &origin);
+    if (res != TEEC_SUCCESS) {
+        printf("The initial_linear_memory of the Wasm-binary cannot be configured. Error: %x", res);
+    }
+}
+
+static void
 allocate_buffers(tee_ctx *ctx, uint64_t buffers_size)
 {
     // The output buffer is used to capture writes to stdout from the WASM
@@ -171,17 +189,18 @@ free_buffers(tee_ctx *ctx)
 int
 main(int argc, char *argv[])
 {
-    if (argc < 3) {
+    if (argc < 4) {
         printf("ERROR: The number of arguments does not match.\n");
-        printf("SYNTAX: %s heap_size wasm_path [wasm_arg]\n", argv[0]);
+        printf("SYNTAX: %s heap_size initial_linear_memory wasm_path [wasm_arg]\n", argv[0]);
         exit(1);
     }
 
     tee_ctx ctx;
     bool success = true;
     uint32_t heap_size = atoi(argv[1]);
-    char *wasm_path = argv[2];
-    char *arg = argc > 3 ? argv[3] : NULL;
+    uint32_t initial_linear_memory = atoi(argv[2]);
+    char *wasm_path = argv[3];
+    char *arg = argc > 4 ? argv[4] : NULL;
 
 #ifdef FRIEDRICH_DEBUG
     printf("ALLOCATE BUFFERS\n");
@@ -196,8 +215,9 @@ main(int argc, char *argv[])
     printf("Tee session prepared\n");
 #endif
     configure_heap_size(&ctx, heap_size);
+    configure_linear_memory(&ctx, initial_linear_memory);
 #ifdef FRIEDRICH_DEBUG
-    printf("Heap size connfigured\n");
+    printf("Heap and linear memory size configured\n");
 #endif
 
     success = start_wasm(&ctx, wasm_path, arg);

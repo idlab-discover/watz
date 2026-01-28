@@ -11,6 +11,7 @@
 #include "tee_benchmarks.h"
 
 static uint32_t heap_size;
+static uint32_t initial_linear_memory_size;
 
 #ifdef FRIEDRICH_OPENSSL
 TEE_Result
@@ -181,6 +182,15 @@ TA_SetHeapSize(uint32_t size)
 }
 
 static TEE_Result
+TA_SetLinearMemory(uint32_t size)
+{
+    initial_linear_memory_size = size;
+    DMSG("The initial Wasm linear memory is set to %u", initial_linear_memory_size);
+
+    return TEE_SUCCESS;
+}
+
+static TEE_Result
 TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
            void *output_buffer, uint64_t output_buffer_size,
            void *benchmark_buffer, uint64_t benchmark_buffer_size)
@@ -196,16 +206,16 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     // Allocate secure memory locations
     uint8_t *global_heap_buf =
         TEE_Malloc(heap_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-    uint8_t *trusted_wasm_bytecode =
-        TEE_Malloc(wasm_bytecode_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
+    // uint8_t *trusted_wasm_bytecode =
+    //     TEE_Malloc(wasm_bytecode_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
 #ifdef FRIEDRICH_DEBUG
     EMSG("TA_RunWasm Heap size: %d (%p)", heap_size, global_heap_buf);
-    EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size, trusted_wasm_bytecode);
+    // EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size, trusted_wasm_bytecode);
 #endif
 
     // Copy the shared memory that contains the WASM bytecode into the secure
     // memory
-    TEE_MemMove(trusted_wasm_bytecode, wasm_bytecode, wasm_bytecode_size);
+    // TEE_MemMove(trusted_wasm_bytecode, wasm_bytecode, wasm_bytecode_size);
 
 #ifdef PROFILING_LAUNCH_TIME
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_MEMORY));
@@ -227,11 +237,13 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     TEE_Result result;
     wamr_context context = { .heap_buf = global_heap_buf,
                              .heap_size = heap_size,
+                             .initial_linear_memory_size = initial_linear_memory_size,
 #ifdef FRIEDRICH_OPENSSL
                              .native_symbols = native_symbols,
                              .native_symbols_size = sizeof(native_symbols),
 #endif
-                             .wasm_bytecode = trusted_wasm_bytecode,
+                             // .wasm_bytecode = trusted_wasm_bytecode,
+                             .wasm_bytecode = wasm_bytecode,
                              .wasm_bytecode_size = wasm_bytecode_size };
 
 #ifdef PROFILING_LAUNCH_TIME
@@ -303,7 +315,7 @@ error:
 
     // Free up the allocated resources
     TEE_Free(global_heap_buf);
-    TEE_Free(trusted_wasm_bytecode);
+    // TEE_Free(trusted_wasm_bytecode);
 
     return result;
 }
@@ -337,6 +349,14 @@ TA_InvokeCommandEntryPoint(void __maybe_unused *sess_ctx, uint32_t cmd_id,
                 return TEE_ERROR_BAD_PARAMETERS;
 
             return TA_SetHeapSize(params[0].value.a);
+        case COMMAND_CONFIGURE_LINEAR_MEMORY:
+            exp_param_types =
+                TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT, TEE_PARAM_TYPE_NONE,
+                                TEE_PARAM_TYPE_NONE, TEE_PARAM_TYPE_NONE);
+            if (exp_param_types != param_types)
+                return TEE_ERROR_BAD_PARAMETERS;
+
+            return TA_SetLinearMemory(params[0].value.a);
         default:
             return TEE_ERROR_BAD_PARAMETERS;
     }

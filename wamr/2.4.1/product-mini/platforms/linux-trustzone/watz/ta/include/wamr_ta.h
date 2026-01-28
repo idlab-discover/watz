@@ -7,5 +7,6 @@
 
 #define COMMAND_RUN_WASM        0
 #define COMMAND_CONFIGURE_HEAP  1
+#define COMMAND_CONFIGURE_LINEAR_MEMORY  2
 
 #endif /* TA_WAMR_H */

@@ -5,7 +5,7 @@ set (PLATFORM_SHARED_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # add_definitions(-D)
 add_compile_definitions(BH_PLATFORM_LINUX_TRUSTZONE)
-add_compile_definitions(FRIEDRICH_DEBUG)
+# add_compile_definitions(FRIEDRICH_DEBUG)
 
 include_directories(${PLATFORM_SHARED_DIR})
 include_directories(${PLATFORM_SHARED_DIR}/../include)
