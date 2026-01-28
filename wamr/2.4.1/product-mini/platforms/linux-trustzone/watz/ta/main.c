@@ -251,7 +251,7 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     int argc = arg_buff != NULL ? 2 : 1;
     char *argv[] = { (char *)"", arg_buff };
     result = TA_InitializeWamrRuntime(&context, argc, argv);
-    ifresult != TEE_SUCCESS)
+    if (result != TEE_SUCCESS)
         goto error;
 
     DMSG("TA_ExecuteWamrRuntime\n");
