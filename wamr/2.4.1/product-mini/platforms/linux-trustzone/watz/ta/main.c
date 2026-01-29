@@ -206,16 +206,22 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     // Allocate secure memory locations
     uint8_t *global_heap_buf =
         TEE_Malloc(heap_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-    // uint8_t *trusted_wasm_bytecode =
-    //     TEE_Malloc(wasm_bytecode_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
+#ifndef NO_COPY
+    uint8_t *trusted_wasm_bytecode =
+        TEE_Malloc(wasm_bytecode_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
+#endif
 #ifdef FRIEDRICH_DEBUG
     EMSG("TA_RunWasm Heap size: %d (%p)", heap_size, global_heap_buf);
-    // EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size, trusted_wasm_bytecode);
+#ifndef NO_COPY
+    EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size, trusted_wasm_bytecode);
+#endif
 #endif
 
     // Copy the shared memory that contains the WASM bytecode into the secure
     // memory
-    // TEE_MemMove(trusted_wasm_bytecode, wasm_bytecode, wasm_bytecode_size);
+#ifndef NO_COPY
+    TEE_MemMove(trusted_wasm_bytecode, wasm_bytecode, wasm_bytecode_size);
+#endif
 
 #ifdef PROFILING_LAUNCH_TIME
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_MEMORY));
@@ -315,8 +321,9 @@ error:
 
     // Free up the allocated resources
     TEE_Free(global_heap_buf);
-    // TEE_Free(trusted_wasm_bytecode);
-
+#ifndef NO_COPY
+    TEE_Free(trusted_wasm_bytecode);
+#endif
     return result;
 }
 
