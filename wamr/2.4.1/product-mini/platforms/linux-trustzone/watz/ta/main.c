@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "wasm_export.h"
+#include "shared_structs.h"
 
 #include <wamr_ta.h>
 #include <wasm.h>
@@ -185,14 +186,15 @@ static TEE_Result
 TA_SetLinearMemory(uint32_t size)
 {
     initial_linear_memory_size = size;
-    DMSG("The initial Wasm linear memory is set to %u", initial_linear_memory_size);
+    DMSG("The initial Wasm linear memory is set to %u",
+         initial_linear_memory_size);
 
     return TEE_SUCCESS;
 }
 
 static TEE_Result
-TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
-           void *output_buffer, uint64_t output_buffer_size,
+TA_RunWasm(wasm_binary *wasm_binaries, [[maybe_unused]] uint8_t binaries_size,
+           char *arg_buff, void *output_buffer, uint64_t output_buffer_size,
            void *benchmark_buffer, uint64_t benchmark_buffer_size)
 {
     (void)&benchmark_buffer;
@@ -206,21 +208,47 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     // Allocate secure memory locations
     uint8_t *global_heap_buf =
         TEE_Malloc(heap_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-#ifndef NO_COPY
-    uint8_t *trusted_wasm_bytecode =
-        TEE_Malloc(wasm_bytecode_size, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-#endif
 #ifdef FRIEDRICH_DEBUG
     EMSG("TA_RunWasm Heap size: %d (%p)", heap_size, global_heap_buf);
-#ifndef NO_COPY
-    EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size, trusted_wasm_bytecode);
-#endif
 #endif
 
-    // Copy the shared memory that contains the WASM bytecode into the secure
-    // memory
-#ifndef NO_COPY
-    TEE_MemMove(trusted_wasm_bytecode, wasm_bytecode, wasm_bytecode_size);
+#ifdef NO_COPY
+    wasm_binary *tee_binaries = wasm_binaries;
+#else
+    /* NOTE(Friedrich)
+     * Although `binaries_size` indicates the size of the passed buffer, I
+     * assume that it does not account for all the linked elements inside of the
+     * struct.
+     * That's why I basically make a deep copy of the struct.
+     */
+    tee_binary *tee_binaries = NULL;
+    wasm_binary *wasm_binaries_copy = &*wasm_binaries;
+    while (wasm_binaries_copy != NULL) {
+        uint8_t *trusted_wasm_bytecode = TEE_Malloc(
+            wasm_binaries_copy->file_length, TEE_USER_MEM_HINT_NO_FILL_ZERO);
+
+#ifdef FRIEDRICH_DEBUG
+        EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size,
+             trusted_wasm_bytecode);
+#endif
+
+        // Copy the shared memory that contains the WASM bytecode into the
+        // secure memory
+        TEE_MemMove(trusted_wasm_bytecode, wasm_binaries_copy->bytecode,
+                    wasm_binaries_copy->file_length);
+
+        tee_binary binary = { .bytecode = trusted_wasm_bytecode,
+                              .file_length = wasm_binaries_copy->file_length,
+                              .next = NULL };
+        if (tee_binaries == NULL) {
+            tee_binaries = &binary;
+        }
+        else {
+            tee_binaries->next = &binary;
+        }
+
+        wasm_binaries_copy = wasm_binaries_copy->next;
+    }
 #endif
 
 #ifdef PROFILING_LAUNCH_TIME
@@ -239,81 +267,84 @@ TA_RunWasm(uint8_t *wasm_bytecode, uint32_t wasm_bytecode_size, char *arg_buff,
     };
 #endif
 
-    // General settings for the runtime
-    TEE_Result result;
-    wamr_context context = { .heap_buf = global_heap_buf,
-                             .heap_size = heap_size,
-                             .initial_linear_memory_size = initial_linear_memory_size,
+    wamr_context context = {
 #ifdef FRIEDRICH_OPENSSL
-                             .native_symbols = native_symbols,
-                             .native_symbols_size = sizeof(native_symbols),
+        .native_symbols = native_symbols,
+        .native_symbols_size = sizeof(native_symbols),
 #endif
-                             // .wasm_bytecode = trusted_wasm_bytecode,
-                             .wasm_bytecode = wasm_bytecode,
-                             .wasm_bytecode_size = wasm_bytecode_size };
+        .heap_buf = global_heap_buf,
+        .heap_size = heap_size,
+        .initial_linear_memory_size = initial_linear_memory_size
+    };
 
-#ifdef PROFILING_LAUNCH_TIME
-    TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_START_HASH));
-#endif
-
-    // Friedrich: Ignore the hasing for now (we don't do any RA right now)
-    // Hash the WASM bytecode for future RA quotes
-    // result = TA_HashWasmBytecode(&context);
-    // if (result != TEE_SUCCESS) goto error;
-
-#ifdef PROFILING_LAUNCH_TIME
-    TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_HASH));
-#endif
-
-    DMSG("TA_InitializeWamrRuntime\n");
+    DMSG("TA_ConfigureWamrRuntime\n");
     int argc = arg_buff != NULL ? 2 : 1;
     char *argv[] = { (char *)"", arg_buff };
-    result = TA_InitializeWamrRuntime(&context, argc, argv);
+    TEE_Result result = TA_ConfigureWamrRuntime(&context, argc, argv);
     if (result != TEE_SUCCESS)
         goto error;
 
-    DMSG("TA_ExecuteWamrRuntime\n");
-    result = TA_ExecuteWamrRuntime(&context);
-    if (result != TEE_SUCCESS)
-        goto error;
+    while (tee_binaries != NULL) {
+        // General settings for the runtime
+        context =
+            (wamr_context){ .wasm_bytecode = tee_binaries->bytecode,
+                            .wasm_bytecode_size = tee_binaries->file_length };
+
+        DMSG("TA_InitializeWamrRuntime\n");
+        result = TA_InitializeWamrRuntime(&context);
+        if (result != TEE_SUCCESS)
+            goto error;
+
+        DMSG("TA_ExecuteWamrRuntime\n");
+        result = TA_ExecuteWamrRuntime(&context);
+        if (result != TEE_SUCCESS)
+            goto error;
 
 #ifdef PROFILING_LAUNCH_TIME
-    snprintf(benchmark_buffer, benchmark_buffer_size,
-             "%ld,%ld,%ld,%ld,%ld,%ld,%ld,",
-             benchmark_get_value(PROFILING_LAUNCH_TIME_START_MEMORY),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_END_MEMORY),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_START_HASH),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_END_HASH),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_END_INIT),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_END_LOAD),
-             benchmark_get_value(PROFILING_LAUNCH_TIME_END_INSTANTIATE));
+        snprintf(benchmark_buffer, benchmark_buffer_size,
+                 "%ld,%ld,%ld,%ld,%ld,%ld,%ld,",
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_START_MEMORY),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_END_MEMORY),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_START_HASH),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_END_HASH),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_END_INIT),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_END_LOAD),
+                 benchmark_get_value(PROFILING_LAUNCH_TIME_END_INSTANTIATE));
 #endif
 
 #ifdef PROFILING_MESSAGES
-    snprintf(benchmark_buffer, benchmark_buffer_size,
-             "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
-             benchmark_get_value(PROFILING_MESSAGES_QUOTE_START),
-             benchmark_get_value(PROFILING_MESSAGES_QUOTE_END),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_MEM_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_KEYGEN_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_KEYGEN_END),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_MEM_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_ASYM_CRYPTO_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_KEYGEN_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_SYM_CRYPTO_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_SYM_CRYPTO_END),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_MEM_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_START),
-             benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_END));
+        snprintf(
+            benchmark_buffer, benchmark_buffer_size,
+            "%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+            benchmark_get_value(PROFILING_MESSAGES_QUOTE_START),
+            benchmark_get_value(PROFILING_MESSAGES_QUOTE_END),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_MEM_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_KEYGEN_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE0_KEYGEN_END),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_MEM_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_ASYM_CRYPTO_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_KEYGEN_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_SYM_CRYPTO_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE1_SYM_CRYPTO_END),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_MEM_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_START),
+            benchmark_get_value(PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_END));
 #endif
 
 #ifdef PROFILING_MESSAGE3
-    snprintf(benchmark_buffer, benchmark_buffer_size, "%ld,%ld,%ld,%ld,",
-             benchmark_get_value(PROFILING_MESSAGE3_MALLOC_START),
-             benchmark_get_value(PROFILING_MESSAGE3_MALLOC_END),
-             benchmark_get_value(PROFILING_MESSAGE3_DECRYPT_START),
-             benchmark_get_value(PROFILING_MESSAGE3_DECRYPT_END));
+        snprintf(benchmark_buffer, benchmark_buffer_size, "%ld,%ld,%ld,%ld,",
+                 benchmark_get_value(PROFILING_MESSAGE3_MALLOC_START),
+                 benchmark_get_value(PROFILING_MESSAGE3_MALLOC_END),
+                 benchmark_get_value(PROFILING_MESSAGE3_DECRYPT_START),
+                 benchmark_get_value(PROFILING_MESSAGE3_DECRYPT_END));
 #endif
+
+#ifndef NO_COPY
+        TEE_Free(tee_binaries->bytecode);
+#endif
+
+        tee_binaries = tee_binaries->next;
+    }
 
 error:
     DMSG("TA_TearDownWamrRuntime\n");
@@ -321,9 +352,6 @@ error:
 
     // Free up the allocated resources
     TEE_Free(global_heap_buf);
-#ifndef NO_COPY
-    TEE_Free(trusted_wasm_bytecode);
-#endif
     return result;
 }
 
@@ -342,7 +370,7 @@ TA_InvokeCommandEntryPoint(void __maybe_unused *sess_ctx, uint32_t cmd_id,
             if (exp_param_types != param_types)
                 return TEE_ERROR_BAD_PARAMETERS;
 
-            return TA_RunWasm((unsigned char *)params[0].memref.buffer,
+            return TA_RunWasm((wasm_binary *)params[0].memref.buffer,
                               params[0].memref.size,
                               (char *)params[1].memref.buffer,
                               params[2].memref.buffer, params[2].memref.size,

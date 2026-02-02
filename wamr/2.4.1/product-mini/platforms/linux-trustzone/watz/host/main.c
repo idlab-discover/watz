@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <dirent.h>
 
 // BSD headers
 #include <err.h>
@@ -12,6 +13,7 @@
 
 // GlobalPlatfrom TA
 #include <wamr_ta.h>
+#include "shared_structs.h"
 
 #define timespec_to_micro(t) t.tv_sec * 1000 * 1000 + t.tv_nsec / 1000
 
@@ -75,9 +77,12 @@ configure_linear_memory(tee_ctx *ctx, uint32_t size)
         TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, TEEC_NONE, TEEC_NONE, TEEC_NONE);
     op.params[0].value.a = size;
 
-    res = TEEC_InvokeCommand(&ctx->sess, COMMAND_CONFIGURE_LINEAR_MEMORY, &op, &origin);
+    res = TEEC_InvokeCommand(&ctx->sess, COMMAND_CONFIGURE_LINEAR_MEMORY, &op,
+                             &origin);
     if (res != TEEC_SUCCESS) {
-        printf("The initial_linear_memory of the Wasm-binary cannot be configured. Error: %x", res);
+        printf("The initial_linear_memory of the Wasm-binary cannot be "
+               "configured. Error: %x",
+               res);
     }
 }
 
@@ -94,43 +99,65 @@ allocate_buffers(tee_ctx *ctx, uint64_t buffers_size)
 }
 
 static bool
-start_wasm(tee_ctx *ctx, char *wasm_path, char *arg)
+start_wasm(tee_ctx *ctx, char *wasm_dir, char *arg)
 {
     TEEC_Operation op;
     uint32_t origin;
     TEEC_Result res;
-    FILE *wasm_file = NULL;
-    long wasm_file_length;
-    unsigned char *wasm_bytecode;
 
-    //
-    // Dumping the Wasm bytecode
-    //
-    // Open the file in binary mode
-    wasm_file = fopen(wasm_path, "rb");
-    if (wasm_file == NULL) {
-        printf("ERROR: the file %s cannot be opened.\n", wasm_path);
+    DIR *directory = opendir(wasm_dir);
+    if (directory == NULL) {
+        printf("ERROR: the directory %s cannot be opened.\n", wasm_dir);
         return false;
     }
-    // Jump to the end of the file
-    fseek(wasm_file, 0, SEEK_END);
-    // Get the current byte offset in the file
-    wasm_file_length = ftell(wasm_file);
-    // Allocate the buffer for the bytecode with the size of the file
-    wasm_bytecode = malloc(ftell(wasm_file) * sizeof(unsigned char));
-    // Jump back to the beginning of the file
-    rewind(wasm_file);
-    // Dump the bytecode into the buffer
-    fread(wasm_bytecode, wasm_file_length, 1, wasm_file);
-    // Close the file
-    fclose(wasm_file);
+
+    wasm_binary binaries = { .bytecode = NULL,
+                             .file_length = 0L,
+                             .next = NULL };
+    uint8_t amount_binaries = 0;
+    struct dirent *wasm_path;
+    while ((wasm_path = readdir(directory)) != NULL) {
+        //
+        // Dumping the Wasm bytecode
+        //
+        // Open the file in binary mode
+        FILE *wasm_file = fopen(wasm_path->d_name, "rb");
+        if (wasm_file == NULL) {
+            printf("ERROR: the file %s cannot be opened.\n", wasm_path->d_name);
+            return false;
+        }
+        // Jump to the end of the file
+        fseek(wasm_file, 0, SEEK_END);
+        // Get the current byte offset in the file
+        long wasm_file_length = ftell(wasm_file);
+        // Allocate the buffer for the bytecode with the size of the file
+        unsigned char *wasm_bytecode =
+            malloc(ftell(wasm_file) * sizeof(unsigned char));
+        // Jump back to the beginning of the file
+        rewind(wasm_file);
+        // Dump the bytecode into the buffer
+        fread(wasm_bytecode, wasm_file_length, 1, wasm_file);
+        // Close the file
+        fclose(wasm_file);
+
+        if (amount_binaries == 0) {
+            binaries.bytecode = wasm_bytecode;
+            binaries.file_length = wasm_file_length;
+        }
+        else {
+            wasm_binary binary = { .bytecode = wasm_bytecode,
+                                   .file_length = wasm_file_length,
+                                   .next = NULL };
+            binaries.next = &binary;
+        }
+    }
 
     memset(&op, 0, sizeof(op));
     op.paramTypes =
         TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, TEEC_MEMREF_TEMP_INPUT,
                          TEEC_MEMREF_TEMP_INOUT, TEEC_MEMREF_TEMP_INOUT);
-    op.params[0].tmpref.buffer = wasm_bytecode;
-    op.params[0].tmpref.size = wasm_file_length;
+    op.params[0].tmpref.buffer = &binaries;
+    op.params[0].tmpref.size = amount_binaries;
     op.params[1].tmpref.buffer = arg;
     op.params[1].tmpref.size = arg != NULL ? strlen(arg) : 0;
     op.params[2].tmpref.buffer = ctx->output_buffer;
@@ -191,7 +218,9 @@ main(int argc, char *argv[])
 {
     if (argc < 4) {
         printf("ERROR: The number of arguments does not match.\n");
-        printf("SYNTAX: %s heap_size initial_linear_memory wasm_path [wasm_arg]\n", argv[0]);
+        printf(
+            "SYNTAX: %s heap_size initial_linear_memory wasm_dir [wasm_arg]\n",
+            argv[0]);
         exit(1);
     }
 
@@ -199,7 +228,7 @@ main(int argc, char *argv[])
     bool success = true;
     uint32_t heap_size = atoi(argv[1]);
     uint32_t initial_linear_memory = atoi(argv[2]);
-    char *wasm_path = argv[3];
+    char *wasm_dir = argv[3];
     char *arg = argc > 4 ? argv[4] : NULL;
 
 #ifdef FRIEDRICH_DEBUG
@@ -220,7 +249,7 @@ main(int argc, char *argv[])
     printf("Heap and linear memory size configured\n");
 #endif
 
-    success = start_wasm(&ctx, wasm_path, arg);
+    success = start_wasm(&ctx, wasm_dir, arg);
 
     terminate_tee_session(&ctx);
 

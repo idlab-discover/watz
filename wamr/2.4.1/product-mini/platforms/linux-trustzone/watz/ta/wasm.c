@@ -79,18 +79,8 @@ out:
 }
 
 TEE_Result
-TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
+TA_ConfigureWamrRuntime(wamr_context *context, int argc, char **argv)
 {
-    char error_buf[128];
-    /* NOTE(Friedrich)
-     Geen idee hoe groot deze moeten zijn, eerste lijn is hoe het oorspronkelijk
-     was in WaTZ.
-    */
-    // uint32_t stack_size = 256 * 1024, heap_size = 35 * 64 * 1024;
-    // uint32_t stack_size = 256 * 1024, heap_size = 8 * 1024 * 1024;
-    uint32_t stack_size = 8092;
-    uint32_t heap_size = context->initial_linear_memory_size;
-
     RuntimeInitArgs init_args;
     TEE_MemFill(&init_args, 0, sizeof(RuntimeInitArgs));
 
@@ -113,9 +103,23 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     wasm_runtime_set_log_level(WASM_LOG_LEVEL_VERBOSE);
 #endif
 
+    // NOTE(Friedrich) For example for `latencies` this is the times it needs to
+    // be executed
+    /* pass arguments to module */
+    wasm_runtime_set_wasi_args(context->module, NULL, 0, NULL, 0, NULL, 0, argv,
+                               argc);
+
 #ifdef PROFILING_LAUNCH_TIME
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_INIT));
 #endif
+
+    return TEE_SUCCESS;
+}
+
+TEE_Result
+TA_InitializeWamrRuntime(wamr_context *context)
+{
+    char error_buf[128];
 
     /* load WASM module */
     if (!(context->module = wasm_runtime_load(context->wasm_bytecode,
@@ -129,16 +133,15 @@ TA_InitializeWamrRuntime(wamr_context *context, int argc, char **argv)
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_LOAD));
 #endif
 
-    // NOTE(Friedrich) For example for `latencies` this is the times it needs to
-    // be executed
-    /* pass arguments to module */
-    wasm_runtime_set_wasi_args(context->module, NULL, 0, NULL, 0, NULL, 0, argv,
-                               argc);
-
     /* instantiate the module */
 #ifdef FRIEDRICH_DEBUG
     EMSG("INSTANTIATED STARTED");
 #endif
+
+    // NOTE(Friedrich): Not sure what the perfect `stack_size` is
+    uint32_t stack_size = 8092;
+    uint32_t heap_size = context->initial_linear_memory_size;
+
     if (!(context->module_inst =
               wasm_runtime_instantiate(context->module, stack_size, heap_size,
                                        error_buf, sizeof(error_buf)))) {

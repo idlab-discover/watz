@@ -1,5 +1,6 @@
 global-incdirs-y += include
 global-incdirs-y += ../../../../../core/iwasm/include/ ../../../../../core/shared/utils ../../../../../core/shared/platform/linux-trustzone 
+global-incdirs-y += ../include/
 
 srcs-y += tee_benchmarks.c wasm.c main.c
 
