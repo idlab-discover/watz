@@ -1,9 +1,7 @@
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
-#include <string.h>
 
 #include "wasm_export.h"
-#include "shared_structs.h"
 
 #include <wamr_ta.h>
 #include <wasm.h>
@@ -193,9 +191,10 @@ TA_SetLinearMemory(uint32_t size)
 }
 
 static TEE_Result
-TA_RunWasm(wasm_binary *wasm_binaries, [[maybe_unused]] uint8_t binaries_size,
-           char *arg_buff, void *output_buffer, uint64_t output_buffer_size,
-           void *benchmark_buffer, uint64_t benchmark_buffer_size)
+TA_RunWasm(unsigned char *wasm_binaries, uint8_t amount_binaries,
+           uint32_t *wasm_lengths, void *output_buffer,
+           uint64_t output_buffer_size, void *benchmark_buffer,
+           uint64_t benchmark_buffer_size)
 {
     (void)&benchmark_buffer;
     (void)&benchmark_buffer_size;
@@ -212,61 +211,6 @@ TA_RunWasm(wasm_binary *wasm_binaries, [[maybe_unused]] uint8_t binaries_size,
     EMSG("TA_RunWasm Heap size: %d (%p)", heap_size, global_heap_buf);
 #endif
 
-#ifdef NO_COPY
-    wasm_binary *tee_binaries = wasm_binaries;
-#else
-    /* NOTE(Friedrich)
-     * Although `binaries_size` indicates the size of the passed buffer, I
-     * assume that it does not account for all the linked elements inside of the
-     * struct.
-     * That's why I basically make a deep copy of the struct.
-     */
-    tee_binary *tee_binaries = NULL;
-    wasm_binary *wasm_binaries_copy = &*wasm_binaries;
-    while (wasm_binaries_copy != NULL) {
-        uint8_t *trusted_wasm_bytecode = TEE_Malloc(
-            wasm_binaries_copy->file_length, TEE_USER_MEM_HINT_NO_FILL_ZERO);
-
-#ifdef FRIEDRICH_DEBUG
-        EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_bytecode_size,
-             trusted_wasm_bytecode);
-#endif
-
-        // Copy the shared memory that contains the WASM bytecode into the
-        // secure memory
-        TEE_MemMove(trusted_wasm_bytecode, wasm_binaries_copy->bytecode,
-                    wasm_binaries_copy->file_length);
-
-        tee_binary binary = { .bytecode = trusted_wasm_bytecode,
-                              .file_length = wasm_binaries_copy->file_length,
-                              .next = NULL };
-        if (tee_binaries == NULL) {
-            tee_binaries = &binary;
-        }
-        else {
-            tee_binaries->next = &binary;
-        }
-
-        wasm_binaries_copy = wasm_binaries_copy->next;
-    }
-#endif
-
-#ifdef PROFILING_LAUNCH_TIME
-    TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_MEMORY));
-#endif
-
-    // Set the output buffer to gather the stdout once the application ended
-    TA_SetOutputBuffer(output_buffer, output_buffer_size);
-
-#ifdef FRIEDRICH_OPENSSL
-    // Define native functions that the Wasm app can call
-    static NativeSymbol native_symbols[] = {
-        EXPORT_WASM_API_WITH_SIG(Host_GenerateKey, "(*~)i"),
-        EXPORT_WASM_API_WITH_SIG(Host_Encrypt, "(i$*~*~)i"),
-        EXPORT_WASM_API_WITH_SIG(Host_Decrypt, "(i*~*~*~)i")
-    };
-#endif
-
     wamr_context context = {
 #ifdef FRIEDRICH_OPENSSL
         .native_symbols = native_symbols,
@@ -277,18 +221,48 @@ TA_RunWasm(wasm_binary *wasm_binaries, [[maybe_unused]] uint8_t binaries_size,
         .initial_linear_memory_size = initial_linear_memory_size
     };
 
-    DMSG("TA_ConfigureWamrRuntime\n");
-    int argc = arg_buff != NULL ? 2 : 1;
-    char *argv[] = { (char *)"", arg_buff };
-    TEE_Result result = TA_ConfigureWamrRuntime(&context, argc, argv);
+    TEE_Result result = TA_ConfigureWamrRuntime(&context);
     if (result != TEE_SUCCESS)
         goto error;
 
-    while (tee_binaries != NULL) {
+    // TODO: NO_COPY mode
+
+    TEE_GetREETime(benchmark_get_store(PROFILING_POLYBENCH_EXEC_START));
+
+    uint64_t binaries_offset = 0;
+    for (uint8_t i = 0; i < amount_binaries; i++) {
+        uint8_t *trusted_wasm_bytecode =
+            TEE_Malloc(wasm_lengths[i], TEE_USER_MEM_HINT_NO_FILL_ZERO);
+
+#ifdef FRIEDRICH_DEBUG
+        EMSG("TA_RunWasm Wasm bytecode size: %d (%p)", wasm_lengths[i],
+             trusted_wasm_bytecode);
+#endif
+
+        // Copy the shared memory that contains the WASM bytecode into the
+        // secure memory
+        TEE_MemMove(trusted_wasm_bytecode, wasm_binaries + binaries_offset,
+                    wasm_lengths[i]);
+
+#ifdef PROFILING_LAUNCH_TIME
+        TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_MEMORY));
+#endif
+
+        // Set the output buffer to gather the stdout once the application ended
+        TA_SetOutputBuffer(output_buffer, output_buffer_size);
+
+#ifdef FRIEDRICH_OPENSSL
+        // Define native functions that the Wasm app can call
+        static NativeSymbol native_symbols[] = {
+            EXPORT_WASM_API_WITH_SIG(Host_GenerateKey, "(*~)i"),
+            EXPORT_WASM_API_WITH_SIG(Host_Encrypt, "(i$*~*~)i"),
+            EXPORT_WASM_API_WITH_SIG(Host_Decrypt, "(i*~*~*~)i")
+        };
+#endif
+
         // General settings for the runtime
-        context =
-            (wamr_context){ .wasm_bytecode = tee_binaries->bytecode,
-                            .wasm_bytecode_size = tee_binaries->file_length };
+        context.wasm_bytecode = trusted_wasm_bytecode;
+        context.wasm_bytecode_size = wasm_lengths[i];
 
         DMSG("TA_InitializeWamrRuntime\n");
         result = TA_InitializeWamrRuntime(&context);
@@ -339,12 +313,15 @@ TA_RunWasm(wasm_binary *wasm_binaries, [[maybe_unused]] uint8_t binaries_size,
                  benchmark_get_value(PROFILING_MESSAGE3_DECRYPT_END));
 #endif
 
-#ifndef NO_COPY
-        TEE_Free(tee_binaries->bytecode);
-#endif
-
-        tee_binaries = tee_binaries->next;
+        binaries_offset += wasm_lengths[i];
+        TEE_Free(trusted_wasm_bytecode);
+        TA_UnstantiateWamrRuntime(&context);
     }
+
+    TEE_GetREETime(benchmark_get_store(PROFILING_POLYBENCH_EXEC_END));
+    snprintf(benchmark_buffer, benchmark_buffer_size, "%ld,%ld",
+             benchmark_get_value(PROFILING_POLYBENCH_EXEC_START),
+             benchmark_get_value(PROFILING_POLYBENCH_EXEC_END));
 
 error:
     DMSG("TA_TearDownWamrRuntime\n");
@@ -370,9 +347,9 @@ TA_InvokeCommandEntryPoint(void __maybe_unused *sess_ctx, uint32_t cmd_id,
             if (exp_param_types != param_types)
                 return TEE_ERROR_BAD_PARAMETERS;
 
-            return TA_RunWasm((wasm_binary *)params[0].memref.buffer,
-                              params[0].memref.size,
-                              (char *)params[1].memref.buffer,
+            return TA_RunWasm((unsigned char *)params[0].memref.buffer,
+                              params[1].memref.size,
+                              (uint32_t *)params[1].memref.buffer,
                               params[2].memref.buffer, params[2].memref.size,
                               params[3].memref.buffer, params[3].memref.size);
 

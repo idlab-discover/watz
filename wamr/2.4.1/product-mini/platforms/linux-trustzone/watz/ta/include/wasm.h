@@ -33,11 +33,13 @@ TA_SetOutputBuffer(void *output_buffer, uint64_t output_buffer_size);
 TEE_Result
 TA_HashWasmBytecode(wamr_context *ctx);
 TEE_Result
-TA_ConfigureWamrRuntime(wamr_context *context, int argc, char **argv);
+TA_ConfigureWamrRuntime(wamr_context *context);
 TEE_Result
 TA_InitializeWamrRuntime(wamr_context *context);
 TEE_Result
 TA_ExecuteWamrRuntime(wamr_context *context);
+void
+TA_UnstantiateWamrRuntime(wamr_context *context);
 void
 TA_TearDownWamrRuntime(wamr_context *context);
 

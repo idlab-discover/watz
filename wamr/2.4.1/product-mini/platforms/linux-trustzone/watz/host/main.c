@@ -13,7 +13,6 @@
 
 // GlobalPlatfrom TA
 #include <wamr_ta.h>
-#include "shared_structs.h"
 
 #define timespec_to_micro(t) t.tv_sec * 1000 * 1000 + t.tv_nsec / 1000
 
@@ -111,12 +110,22 @@ start_wasm(tee_ctx *ctx, char *wasm_dir, char *arg)
         return false;
     }
 
-    wasm_binary binaries = { .bytecode = NULL,
-                             .file_length = 0L,
-                             .next = NULL };
-    uint8_t amount_binaries = 0;
-    uint64_t total_size = 0;
     struct dirent *wasm_path;
+    uint8_t amount_binaries = 0;
+    while ((wasm_path = readdir(directory)) != NULL) {
+        if (strcmp(wasm_path->d_name, ".") == 0
+            || strcmp(wasm_path->d_name, "..") == 0)
+            continue;
+
+        amount_binaries++;
+    }
+    rewinddir(directory);
+
+    unsigned char *binaries[amount_binaries];
+    uint32_t lengths[amount_binaries];
+    uint64_t total_size = 0;
+    uint16_t position = 0;
+
     while ((wasm_path = readdir(directory)) != NULL) {
         if (strcmp(wasm_path->d_name, ".") == 0
             || strcmp(wasm_path->d_name, "..") == 0)
@@ -146,29 +155,30 @@ start_wasm(tee_ctx *ctx, char *wasm_dir, char *arg)
         // Close the file
         fclose(wasm_file);
 
-        if (amount_binaries == 0) {
-            binaries.bytecode = wasm_bytecode;
-            binaries.file_length = wasm_file_length;
-        }
-        else {
-            wasm_binary binary = { .bytecode = wasm_bytecode,
-                                   .file_length = wasm_file_length,
-                                   .next = NULL };
-            binaries.next = &binary;
-        }
+        binaries[position] = wasm_bytecode;
+        lengths[position] = (uint32_t)wasm_file_length;
+        total_size += (uint64_t)wasm_file_length;
 
-        total_size += wasm_file_length;
-        amount_binaries++;
+        position++;
+    }
+
+    unsigned char binaries_flattened[total_size];
+    uint64_t binaries_offset = 0;
+    for (uint8_t i = 0; i < amount_binaries; i++) {
+        for (uint32_t j = 0; j < lengths[i]; j++) {
+            binaries_flattened[binaries_offset + j] = binaries[i][j];
+        }
+        binaries_offset += lengths[i];
     }
 
     memset(&op, 0, sizeof(op));
     op.paramTypes =
         TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT, TEEC_MEMREF_TEMP_INPUT,
                          TEEC_MEMREF_TEMP_INOUT, TEEC_MEMREF_TEMP_INOUT);
-    op.params[0].tmpref.buffer = &binaries;
-    op.params[0].tmpref.size = amount_binaries;
-    op.params[1].tmpref.buffer = arg;
-    op.params[1].tmpref.size = arg != NULL ? strlen(arg) : 0;
+    op.params[0].tmpref.buffer = binaries_flattened;
+    op.params[0].tmpref.size = total_size;
+    op.params[1].tmpref.buffer = lengths;
+    op.params[1].tmpref.size = amount_binaries;
     op.params[2].tmpref.buffer = ctx->output_buffer;
     op.params[2].tmpref.size = ctx->output_buffer_size;
     op.params[3].tmpref.buffer = ctx->benchmark_buffer;
@@ -210,7 +220,8 @@ terminate_tee_session(tee_ctx *ctx)
 static void
 print_buffers(tee_ctx *ctx)
 {
-    printf("%s%s", ctx->benchmark_buffer, ctx->output_buffer);
+    // printf("%s%s", ctx->benchmark_buffer, ctx->output_buffer);
+    printf("%s\n", ctx->benchmark_buffer);
 }
 
 static void

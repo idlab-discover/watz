@@ -6,15 +6,17 @@
 #include <tee_internal_api_extensions.h>
 
 // Inspired from utee_defines.h
-#define TEE_TIME_NANOS_BASE    1000 * 1000 * 1000
-#define TEE_TIME_NANOS_SUB(t1, t2, dst) do {                            \
-        (dst).seconds = (t1).seconds - (t2).seconds;                    \
-        if ((t1).nanos < (t2).nanos) {                                  \
-            (dst).seconds--;                                            \
-            (dst).nanos = (t1).nanos + TEE_TIME_NANOS_BASE - (t2).nanos;\
-        } else {                                                        \
-            (dst).nanos = (t1).nanos - (t2).nanos;                      \
-        }                                                               \
+#define TEE_TIME_NANOS_BASE 1000 * 1000 * 1000
+#define TEE_TIME_NANOS_SUB(t1, t2, dst)                                  \
+    do {                                                                 \
+        (dst).seconds = (t1).seconds - (t2).seconds;                     \
+        if ((t1).nanos < (t2).nanos) {                                   \
+            (dst).seconds--;                                             \
+            (dst).nanos = (t1).nanos + TEE_TIME_NANOS_BASE - (t2).nanos; \
+        }                                                                \
+        else {                                                           \
+            (dst).nanos = (t1).nanos - (t2).nanos;                       \
+        }                                                                \
     } while (0)
 
 #define teetime_to_micro(t) \
@@ -49,9 +51,14 @@
 #define PROFILING_MESSAGE3_DECRYPT_START 2
 #define PROFILING_MESSAGE3_DECRYPT_END 3
 
-#define HIGHEST_ID  PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_END + 1
+#define PROFILING_POLYBENCH_EXEC_START 0
+#define PROFILING_POLYBENCH_EXEC_END 1
 
-TEE_Time* benchmark_get_store(uint32_t id);
-int64_t benchmark_get_value(uint32_t id);
+#define HIGHEST_ID PROFILING_MESSAGES_MESSAGE2_SYM_CRYPTO_END + 1
+
+TEE_Time *
+benchmark_get_store(uint32_t id);
+int64_t
+benchmark_get_value(uint32_t id);
 
 #endif

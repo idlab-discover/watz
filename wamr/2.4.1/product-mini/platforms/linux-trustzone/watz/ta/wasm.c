@@ -79,7 +79,7 @@ out:
 }
 
 TEE_Result
-TA_ConfigureWamrRuntime(wamr_context *context, int argc, char **argv)
+TA_ConfigureWamrRuntime(wamr_context *context)
 {
     RuntimeInitArgs init_args;
     TEE_MemFill(&init_args, 0, sizeof(RuntimeInitArgs));
@@ -106,8 +106,9 @@ TA_ConfigureWamrRuntime(wamr_context *context, int argc, char **argv)
     // NOTE(Friedrich) For example for `latencies` this is the times it needs to
     // be executed
     /* pass arguments to module */
-    wasm_runtime_set_wasi_args(context->module, NULL, 0, NULL, 0, NULL, 0, argv,
-                               argc);
+    // wasm_runtime_set_wasi_args(context->module, NULL, 0, NULL, 0, NULL, 0,
+    // argv,
+    //                            argc);
 
 #ifdef PROFILING_LAUNCH_TIME
     TEE_GetREETime(benchmark_get_store(PROFILING_LAUNCH_TIME_END_INIT));
@@ -174,13 +175,17 @@ TA_ExecuteWamrRuntime(wamr_context *context)
 }
 
 void
-TA_TearDownWamrRuntime(wamr_context *context)
+TA_UnstantiateWamrRuntime(wamr_context *context)
 {
-    singleton_wamr_context = NULL;
-
     if (context->module_inst) {
         wasm_runtime_deinstantiate(context->module_inst);
     }
+}
+
+void
+TA_TearDownWamrRuntime(wamr_context *context)
+{
+    singleton_wamr_context = NULL;
 
     if (context->module)
         wasm_runtime_unload(context->module);
