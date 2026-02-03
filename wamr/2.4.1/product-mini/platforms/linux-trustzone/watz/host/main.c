@@ -115,15 +115,21 @@ start_wasm(tee_ctx *ctx, char *wasm_dir, char *arg)
                              .file_length = 0L,
                              .next = NULL };
     uint8_t amount_binaries = 0;
+    uint64_t total_size = 0;
     struct dirent *wasm_path;
     while ((wasm_path = readdir(directory)) != NULL) {
+        if (strcmp(wasm_path->d_name, ".") == 0
+            || strcmp(wasm_path->d_name, "..") == 0)
+            continue;
         //
         // Dumping the Wasm bytecode
         //
         // Open the file in binary mode
-        FILE *wasm_file = fopen(wasm_path->d_name, "rb");
+        char file_path[PATH_MAX];
+        snprintf(file_path, PATH_MAX, "%s/%s", wasm_dir, wasm_path->d_name);
+        FILE *wasm_file = fopen(file_path, "rb");
         if (wasm_file == NULL) {
-            printf("ERROR: the file %s cannot be opened.\n", wasm_path->d_name);
+            printf("ERROR: %s cannot be opened.\n", file_path);
             return false;
         }
         // Jump to the end of the file
@@ -150,6 +156,9 @@ start_wasm(tee_ctx *ctx, char *wasm_dir, char *arg)
                                    .next = NULL };
             binaries.next = &binary;
         }
+
+        total_size += wasm_file_length;
+        amount_binaries++;
     }
 
     memset(&op, 0, sizeof(op));
