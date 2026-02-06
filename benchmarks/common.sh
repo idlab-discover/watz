@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # USER SETTINGS
-# BM_BOARD_HOSTNAME="localhost"
-# BM_BOARD_HOSTNAME="192.168.0.116"
-BM_BOARD_HOSTNAME="10.10.130.16"
+# BM_BOARD_HOSTNAME="10.10.129.175"
+BM_BOARD_HOSTNAME="localhost"
 BM_BOARD_USER="root"
-# TARGET="QEMU"
-TARGET="JETSON"
+# Possible values: QEMU, JETSON
+TARGET="QEMU"
+# Possible values: old, new
+WAMR_VERSION="new"
 
 # exit when any command fails
 set -e
@@ -17,17 +18,17 @@ TA_LOG_LEVEL=4
 # define common paths
 BM_CFLAGS="-O3"
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-# OPTEE_TOOLCHAINS_DIR=$OPTEE_DIR/toolchains
-# OPTEE_BR_OUT_DIR=$OPTEE_DIR/out-br
-# WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2.x
-WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2.4.1
-# WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/1.3.3
-# OPTEE_DIR=$ROOT_DIR/../..
+
+if [ "$WAMR_VERSION" == "old" ]; then
+  # WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/1.3.3
+  WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2021
+elif [ "$WAMR_VERSION" == "new" ]; then
+  WATZ_RUNTIME_DIR=$ROOT_DIR/../wamr/2.4.1
+fi
+
 BM_BUILDER_PATH="$ROOT_DIR"
-# WATZ_RUNTIME_DIR=~/Downloads/unine-watz/runtime/
 DIST_DIR=$ROOT_DIR/dist
 LOGS_DIR=$ROOT_DIR/logs
-# define variables
 
 if [ "$TARGET" == "JETSON" ]; then
   BM_SSH_PORT=22
@@ -96,7 +97,11 @@ deploywatz() {
   mkdir -p out/
   OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux-trustzone/watz/out
   if [ "$TARGET" == "JETSON" ]; then
-    sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ca/watz $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin
+    if [ "$WAMR_VERSION" == "new" ]; then
+      sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ca/watz $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin
+    elif [ "$WAMR_VERSION" == "old" ]; then
+      sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ca/vedliot_attester $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin/watz
+    fi
     sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH/ta/bc20728a-6a28-49d8-98d8-f22e7535f137.ta $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/lib/optee_armtz
     sshpass -p "$BM_BOARD_PASS" ssh $BM_BOARD_USER@$BM_BOARD_HOSTNAME 'chmod 666 /lib/optee_armtz/bc20728a-6a28-49d8-98d8-f22e7535f137.ta'
   elif [ "$TARGET" == "QEMU" ]; then
@@ -111,21 +116,22 @@ buildwamr() {
   announcebuild "WAMR runtime"
   mkdir -p $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
   cd $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
-  # NOTE(Friedrich) For `runtime-old`
-  # cp ../CMakeLists-aarch64.txt ../CMakeLists.txt
   cmake .. -G Ninja -DWAMR_BUILD_TARGET=AARCH64
   ninja clean
   ninja
-  # rm ../CMakeLists.txt
 }
 
 deploywamr() {
   announcedeploy "WAMR runtime"
   mkdir -p $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
   cd $WATZ_RUNTIME_DIR/product-mini/platforms/linux/build
-  OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm-2.4.1
-  # NOTE(Friedrich) For `wasi-sdk/12`
-  # OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm
+
+  if [ "$WAMR_VERSION" == "new" ]; then
+    OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm-2.4.1
+  elif [ "$WAMR_VERSION" == "old" ]; then
+    OUT_PATH=$WATZ_RUNTIME_DIR/product-mini/platforms/linux/build/iwasm
+  fi
+
   if [ "$TARGET" == "JETSON" ]; then
     sshpass -p "$BM_BOARD_PASS" rsync --progress $OUT_PATH $BM_BOARD_USER@$BM_BOARD_HOSTNAME:/usr/sbin/iwasm
   elif [ "$TARGET" == "QEMU" ]; then
