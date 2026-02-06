@@ -1,9 +1,9 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 new file mode 100644
-index 0000000..cbd6aab
+index 0000000..f38bcb4
 --- /dev/null
 +++ b/CMakeLists.txt
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,35 @@
 +cmake_minimum_required(VERSION 3.5)
 +project(polybench)
 +
@@ -20,91 +20,12 @@ index 0000000..cbd6aab
 +# add_library(polybench all/all.c)
 +add_executable(polybench all/all.c)
 +
-+# add_library(polybench_utils STATIC ${CMAKE_CURRENT_SOURCE_DIR}/utilities/polybench.c)
-+# target_include_directories(polybench_utils INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utilities)
-+
 +## Print run time of each test
 +# target_compile_definitions(polybench PUBLIC POLYBENCH_TIME)
 +# target_compile_definitions(polybench PRIVATE POLYBENCH_CLOCK_TIMER)
 +
-+# create empty list of polybench targets
-+# set(polybench_targets "")
-+# set (polybench_base_dirs "")
-+# set (polybench_files "")
-+
-+# function(add_polybench_child_targets parent_folder)
-+#     list(APPEND polybench_base_dirs ${parent_folder})
-+#     # file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/*)
-+#     file(GLOB_RECURSE children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${parent_folder}/*.h)
-+#     list(APPEND polybench_files ${children})
-+#
-+#     set (polybench_base_dirs ${polybench_base_dirs} PARENT_SCOPE)
-+#     set (polybench_files ${polybench_files} PARENT_SCOPE)
-+    # file(GLOB children ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/*)
-+
-+    # foreach (child ${children})
-+    # message(${child})
-+        ## Nussinov is a weird thing that does not compile, so ignore it
-+        # if (${child} MATCHES "Nussinov")
-+        #     continue()
-+        # endif ()
-+        
-+        # if (IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${child})
-+        #     file(GLOB sub_children ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/*)
-+        #     # file(GLOB sub_children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/*)
-+        #     message(test=${sub_children})
-+        #     foreach (sub_child ${sub_children})
-+        #         message(test=${sub_child})
-+        #         if (${sub_child} MATCHES ".*\\.h$")
-+        #             list(APPEND polybench_files ${sub_child})
-+        #             message(${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/${sub_child})
-+        #         elseif (IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${child})
-+        #             foreach (sub_sub_child ${sub_children})
-+        #             endforeach ()
-+        #             list(APPEND polybench_files ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/)
-+        #             message(${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/)
-+        #         endif ()
-+        #     endforeach ()
-+            # add_polybench_child_targets(${child})
-+        # elseif (${child} MATCHES ".*\\.h$")
-+        #     list(APPEND polybench_files ${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child})
-+        #     message(${CMAKE_CURRENT_SOURCE_DIR}/${parent_folder}/${child}/)
-+
-+            # add_subdirectory(${parent_folder})
-+            # list(APPEND polybench_targets ${child})
-+            # get_filename_component(child_name ${child} NAME_WE)
-+
-+            # add_library(${child_name} STATIC ${child})
-+            # target_link_libraries(${child_name} PRIVATE polybench)
-+            # target_include_directories(${child_name} INTERFACE ${parent_folder})
-+
-+            # list(APPEND polybench_targets ${child_name})
-+        # endif ()
-+
-+        # set (polybench_base_dirs ${polybench_base_dirs} PARENT_SCOPE)
-+        # set (polybench_files ${polybench_files} PARENT_SCOPE)
-+        # set(polybench_targets ${polybench_targets} PARENT_SCOPE)
-+    # endforeach ()
-+# endfunction()
-+
-+# add_polybench_child_targets(datamining)
-+# add_polybench_child_targets(linear-algebra)
-+# add_polybench_child_targets(medley)
-+# add_polybench_child_targets(stencils)
-+# message(hoi=${polybench_files})
-+    
-+# file(GLOB_RECURSE sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} datamining/*.h)
-+# target_sources(polybench PRIVATE FILE_SET utilities TYPE HEADERS BASE_DIRS "utilities" FILES "utilities/polybench.h")
-+
 +file(GLOB_RECURSE sources CONFIGURE_DEPENDS datamining/*.c linear-algebra/*.c medley/*.c stencils/*.c)
 +file(GLOB headers include/*.h)
-+# target_sources(polybench PRIVATE FILE_SET datamining TYPE HEADERS BASE_DIRS "datamining" "linear-algebra" FILES ${sources})
-+
-+# file(GLOB_RECURSE sources CONFIGURE_DEPENDS medley/*.c)
-+# target_sources(polybench PRIVATE FILE_SET medley TYPE HEADERS BASE_DIRS "medley" FILES ${sources})
-+#
-+# file(GLOB_RECURSE sources CONFIGURE_DEPENDS stencils/*.c)
-+# target_sources(polybench PRIVATE FILE_SET stencils TYPE HEADERS BASE_DIRS "stencils" FILES ${sources})
 +
 +target_sources(polybench 
 +    PUBLIC FILE_SET public_headers TYPE HEADERS BASE_DIRS "all" FILES "all/all.h"
@@ -114,20 +35,10 @@ index 0000000..cbd6aab
 +    PRIVATE
 +        FILE_SET private_headers
 +        TYPE HEADERS
-+        # BASE_DIRS "utilities/" ${polybench_base_dirs}
-+        # FILES "utilities/polybench.h" ${polybench_files}
 +        BASE_DIRS "utilities" "include"
 +        FILES "utilities/polybench.h" ${headers}
 +)
-+# target_link_libraries(polybench PRIVATE polybench_utils)
 +
-+# add_executable (${PROJECT_NAME}_all all/all.c)
-+## Do not forget to change the main of `all/main.c`
-+# add_library (${PROJECT_NAME}_all STATIC all/all.c)
-+# target_sources(${PROJECT_NAME}_all PRIVATE ${polybench_targets})
-+# target_link_libraries (${PROJECT_NAME}_all PRIVATE ${polybench_targets})
-+# target_include_directories (${PROJECT_NAME}_all INTERFACE ${polybench_targets})
-+# target_include_directories(${PROJECT_NAME}_all INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/all)
 diff --git a/all/all.c b/all/all.c
 new file mode 100644
 index 0000000..7b59181
