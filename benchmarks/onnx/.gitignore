@@ -1,0 +1,5 @@
+out/
+**/build/
+
+tee/ta/lib/libonnx.a
+native/onnx2c
