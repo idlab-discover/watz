@@ -71,7 +71,7 @@ static void execute(tee_context *tee) {
            err_origin);
   }
 
-  printf("%s\n", benchmark_buffer);
+  printf("%s", benchmark_buffer);
 
   free(benchmark_buffer);
 }

@@ -29,9 +29,7 @@ prepare-for-rootfs: all_mwe
 	@mkdir -p $(OUTPUT_DIR)
 	@mkdir -p $(OUTPUT_DIR)/ta
 	@mkdir -p $(OUTPUT_DIR)/ca
-	if [ -e host/polybench_native_tee ]; then \
-		cp -p host/polybench_native_tee $(OUTPUT_DIR)/ca/; \
-	fi; \
+	cp -p host/polybench_native_tee $(OUTPUT_DIR)/ca/; \
 	cp -pr ta/*.ta $(OUTPUT_DIR)/ta/; \
 
 prepare-for-rootfs-clean:
