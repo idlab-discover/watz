@@ -1,7 +1,6 @@
 *.wasm
 *.aot
 build/
-logs/
 
 .cache/
 .ipynb_checkpoints/
