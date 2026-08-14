@@ -1,0 +1,108 @@
+root-dir := `pwd`
+out-dir := root-dir + '/out'
+
+host-ip := '192.168.55.1'
+orin-pass := 'orin'
+
+ta-log-level := '4'
+
+target := 'aarch64-unknown-linux-gnu'
+optee-dir := '~/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/'
+cross-compile := '~/jetson/jetson-toolchain/aarch64--glibc--stable-2022.08-1/bin/aarch64-buildroot-linux-gnu-'
+teec-export := '~/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/install/t234/usr'
+ta-dev-kit-dir := '~/jetson/jetson-public-srcs/Linux_for_Tegra/source/jetson-optee-srcs/optee/build/t234/export-ta_arm64'
+
+default: build run
+
+build: build-guest build-host build-native build-tee-onnx2c
+build-guest: build-guest-onnx2c
+build-host: build-host-wamr build-tee-wamr
+build-native: build-native-onnx2c
+
+run: run-wasm run-native
+run-wasm: run-wamr-onnx2c
+run-native: run-native-onnx2c
+
+[working-directory: 'native/onnx2c/build']
+build-guest-onnx2c wasi-sdk='/opt/wasi-sdk-12.0':
+  cmake .. -G Ninja \
+    -DCMAKE_C_COMPILER="{{wasi-sdk}}/bin/clang" \
+    -DCMAKE_C_FLAGS="--target=wasm32-wasip2 --sysroot={{wasi-sdk}}/share/wasi-sysroot/ -Wl,--strip-all -D_WASI_EMULATED_PROCESS_CLOCKS"
+  # -DCMAKE_C_FLAGS="--target=wasm32-wasi --sysroot={{wasi-sdk}}/share/wasi-sysroot/ -Wl,--strip-all -D_WASI_EMULATED_PROCESS_CLOCKS -Wl,--allow-undefined-file={{wasi-sdk}}/share/wasi-sysroot/share/wasm32-wasi/defined-symbols.txt"
+  ninja
+  cp onnx {{out-dir}}/onnx2c.wasm
+
+[working-directory: 'host/wamr/build']
+build-host-wamr:
+  cmake .. -DCROSS_COMPILE={{cross-compile}}
+  make
+
+[working-directory: 'native/onnx2c/build']
+build-native-onnx2c:
+  cmake .. -G Ninja \
+    -DCMAKE_C_COMPILER="{{cross-compile}}gcc"
+  ninja
+
+[private, working-directory: 'host/tee-wamr/vmlib/build']
+build-tee-vmlib:
+  cmake .. -DCROSS_COMPILE={{cross-compile}}
+  make 
+
+[working-directory: 'host/tee-wamr']
+build-tee-wamr ta-data-mib='20': build-tee-vmlib
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  TA_DATA_SIZE=$(({{ta-data-mib}} * 1024 * 1024))
+  make CROSS_COMPILE={{cross-compile}} \
+    TEEC_EXPORT={{teec-export}} \
+    TA_DEV_KIT_DIR={{ta-dev-kit-dir}} TA_DATA_SIZE=$TA_DATA_SIZE CFG_TEE_TA_LOG_LEVEL={{ta-log-level}}
+
+[working-directory: 'tee/onnx2c']
+build-tee-onnx2c ta-data-mib='15':
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  TA_DATA_SIZE=$(({{ta-data-mib}} * 1024 * 1024))
+  make CROSS_COMPILE={{cross-compile}} \
+    TEEC_EXPORT={{teec-export}} \
+    TA_DEV_KIT_DIR={{ta-dev-kit-dir}} TA_DATA_SIZE=$TA_DATA_SIZE CFG_TEE_TA_LOG_LEVEL={{ta-log-level}}
+
+deploy:
+  rsync -Pr out orin@{{host-ip}}:~
+  rsync -Pr data orin@{{host-ip}}:~
+
+[working-directory: 'host/tee-wamr']
+deploy-tee-wamr:
+  rsync -Pr out orin@{{host-ip}}:~
+  ssh -t orin@{{host-ip}} 'sudo cp out/ta/bc20728a-6a28-49d8-98d8-f22e7535f137.ta /lib/optee_armtz/'
+
+[working-directory: 'tee/onnx2c']
+deploy-tee-onnx2c:
+  rsync -Pr out orin@{{host-ip}}:~
+  ssh -t orin@{{host-ip}} 'sudo cp out/ta/ac20728a-6a28-49d8-98d8-f22e7535f137.ta /lib/optee_armtz/'
+
+[working-directory: 'host/wamr/build']
+deploy-wamr:
+  rsync -Pr wamr-host-onnx2c orin@{{host-ip}}:~
+
+[working-directory: 'native/onnx2c/build']
+deploy-native-onnx2c:
+  rsync -Pr onnx orin@{{host-ip}}:~
+
+run-wamr-onnx2c:
+  ssh -t orin@{{host-ip}} "sudo nice -n -24 ./wamr-host-onnx2c"
+
+[working-directory: 'native/onnx2c']
+run-native-onnx2c:
+  cd build && ./onnx
+
+run-tee-onnx2c:
+  ssh -t orin@{{host-ip}} "sudo nice -n -24 ./out/ca/tee-onnx2c"
+
+run-tee-wamr heap-mib='1'  lin-mib='0':
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  HEAP=$(({{heap-mib}} * 1024 * 1024))
+  LIN=$(({{lin-mib}} * 1024 * 1024))
+  ssh -t orin@{{host-ip}} "sudo nice -n -24 ./out/ca/watz $HEAP $LIN out/onnx2c.aot mobilenet data/mobilenetv2-7.onnx data/grace_hopper.jpg"
+  # ssh -t orin@{{host-ip}} "sudo ./out/ca/watz $HEAP $LIN out/onnx_bench.wasm mobilenet data/mobilenetv2-7.onnx data/grace_hopper.jpg"
+  # ssh -t orin@{{host-ip}} "sudo ./out/ca/watz $HEAP $LIN out/onnx_bench.aot yolo data/yolov8n-face.onnx data/grace_hopper.jpg"

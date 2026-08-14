@@ -1,0 +1,10 @@
+#ifndef TA_ONNX2C_H
+#define TA_ONNX2C_H
+
+#define TA_ONNX2C_UUID \
+  { 0xac20728a, 0x6a28, 0x49d8, \
+    { 0x98, 0xd8, 0xf2, 0x2e, 0x75, 0x35, 0xf1, 0x37 } }
+
+#define COMMAND_RUN        0
+
+#endif /* TA_ONNX2C_H */
